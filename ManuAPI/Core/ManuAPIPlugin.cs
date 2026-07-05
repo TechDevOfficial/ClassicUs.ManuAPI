@@ -1,0 +1,25 @@
+using BepInEx;
+using BepInEx.Logging;
+using BepInEx.Unity.IL2CPP;
+using ClassicUs.Manactor;
+using HarmonyLib;
+
+namespace ClassicUs.ManuAPI
+{
+    [BepInPlugin(Guid, "Classic Us ManuAPI", Version)]
+    [BepInDependency(ManactorPlugin.Guid)]
+    public class ManuAPIPlugin : BasePlugin
+    {
+        public const string Guid = "classicus.manuapi";
+        public const string Version = "1.3.2";
+
+        public static ManualLogSource Log;
+
+        public override void Load()
+        {
+            Log = base.Log;
+            new Harmony(Guid).PatchAll();
+            Log.LogInfo("ClassicUs.ManuAPI loaded.");
+        }
+    }
+}

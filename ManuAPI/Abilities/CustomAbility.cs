@@ -1,0 +1,43 @@
+using System;
+using UnityEngine;
+
+namespace ClassicUs.ManuAPI
+{
+    public abstract class CustomAbility
+    {
+        private AbilityButton _button;
+
+        protected abstract string Name { get; }
+        protected virtual float Cooldown => 0f;
+        protected virtual AspectPosition.EdgeAlignments Alignment => AspectPosition.EdgeAlignments.LeftBottom;
+        protected virtual Vector3 DistanceFromEdge => new Vector3(1.4f, 1f, 0f);
+
+        protected abstract Sprite CreateIcon(Sprite original);
+        protected abstract bool IsVisible();
+        protected abstract void OnActivate();
+
+        public void Tick(HudManager hud)
+        {
+            if (_button == null)
+                _button = new AbilityButton(Name, CreateIcon, IsVisible, HandleClick, Alignment, DistanceFromEdge);
+
+            _button.Tick(hud);
+        }
+
+        private void HandleClick()
+        {
+            OnActivate();
+            if (Cooldown > 0f) _button.StartCooldown(Cooldown);
+        }
+
+        protected void StartEffect(float seconds) => _button?.StartEffect(seconds);
+
+        protected void StartCooldown(float seconds) => _button?.StartCooldown(seconds);
+
+        public void Reset()
+        {
+            _button?.Reset();
+            _button = null;
+        }
+    }
+}

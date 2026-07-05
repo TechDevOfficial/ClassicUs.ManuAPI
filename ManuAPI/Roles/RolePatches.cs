@@ -331,24 +331,6 @@ namespace ClassicUs.ManuAPI
         private static void Postfix(TaskAdderGame __instance) => FreeplayRoleFolderRegistration.AddMissingRoleButtons(__instance);
     }
 
-    [HarmonyPatch(typeof(TaskFolder), nameof(TaskFolder.ShowRoles))]
-    internal static class TaskFolder_ShowRoles_Patch
-    {
-        private static void Prefix() => FreeplayRoleFolderRegistration.Force("TaskFolder.ShowRoles");
-    }
-
-    [HarmonyPatch(typeof(TaskFolder), nameof(TaskFolder.Start))]
-    internal static class TaskFolder_Start_Patch
-    {
-        private static void Prefix() => FreeplayRoleFolderRegistration.Force("TaskFolder.Start");
-    }
-
-    [HarmonyPatch(typeof(TaskFolder), nameof(TaskFolder.OnClick))]
-    internal static class TaskFolder_OnClick_Patch
-    {
-        private static void Prefix() => FreeplayRoleFolderRegistration.Force("TaskFolder.OnClick");
-    }
-
     [HarmonyPatch(typeof(RoleManager), nameof(RoleManager.AssignRolesForTeam))]
     internal static class RoleManager_AssignRolesForTeam_Patch
     {

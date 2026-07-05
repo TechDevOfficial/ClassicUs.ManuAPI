@@ -187,6 +187,25 @@ namespace ClassicUs.ManuAPI
         private static void Postfix(RoleBehaviour __instance, PlayerControl player) => RoleRegistry.ApplyOnAssign(__instance, player);
     }
 
+    internal static class RoleRegistrationForcer
+    {
+        public static void Force()
+        {
+            try
+            {
+                ManactorAPI.FlushPendingIl2CppTypeRegistrations();
+                RoleRegistry.EnsureAllTypesRegistered();
+            }
+            catch (Exception e) { ManuAPIPlugin.Log.LogError("Flush pending role registrations: " + e); }
+        }
+    }
+
+    [HarmonyPatch(typeof(TaskFolder), nameof(TaskFolder.ShowRoles))]
+    internal static class TaskFolder_ShowRoles_Patch
+    {
+        private static void Prefix() => RoleRegistrationForcer.Force();
+    }
+
     [HarmonyPatch(typeof(RoleManager), nameof(RoleManager.AssignRolesForTeam))]
     internal static class RoleManager_AssignRolesForTeam_Patch
     {
@@ -195,12 +214,7 @@ namespace ClassicUs.ManuAPI
             var client = AmongUsClient.Instance;
             if (client == null || !client.AmHost) return;
 
-            try
-            {
-                ManactorAPI.FlushPendingIl2CppTypeRegistrations();
-                RoleRegistry.EnsureAllTypesRegistered();
-            }
-            catch (Exception e) { ManuAPIPlugin.Log.LogError("Flush pending role registrations: " + e); }
+            RoleRegistrationForcer.Force();
         }
 
         private static void Postfix(RoleManager __instance, RoleTeamTypes type, int max)

@@ -11,14 +11,16 @@ namespace ClassicUs.ManuAPI
     public class ManuAPIPlugin : BasePlugin
     {
         public const string Guid = "classicus.manuapi";
-        public const string Version = "1.3.2";
+        public const string Version = "1.3.5";
 
         public static ManualLogSource Log;
 
         public override void Load()
         {
             Log = base.Log;
-            new Harmony(Guid).PatchAll();
+            var harmony = new Harmony(Guid);
+            harmony.PatchAll();
+            Il2CppInteropCompat.Apply(harmony);
             Log.LogInfo("ClassicUs.ManuAPI loaded.");
         }
     }

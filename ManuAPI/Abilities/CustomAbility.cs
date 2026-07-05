@@ -14,12 +14,13 @@ namespace ClassicUs.ManuAPI
 
         protected abstract Sprite CreateIcon(Sprite original);
         protected abstract bool IsVisible();
+        protected virtual bool CanActivate() => true;
         protected abstract void OnActivate();
 
         public void Tick(HudManager hud)
         {
             if (_button == null)
-                _button = new AbilityButton(Name, CreateIcon, IsVisible, HandleClick, Alignment, DistanceFromEdge);
+                _button = new AbilityButton(Name, CreateIcon, IsVisible, CanActivate, HandleClick, Alignment, DistanceFromEdge);
 
             _button.Tick(hud);
         }

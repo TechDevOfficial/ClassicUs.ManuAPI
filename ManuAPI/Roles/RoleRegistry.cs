@@ -142,6 +142,13 @@ namespace ClassicUs.ManuAPI
             return null;
         }
 
+        internal static IEnumerable<CustomRole> RegisteredCustomRoles()
+        {
+            for (int i = 0; i < _handles.Count; i++)
+                if (_handles[i].Descriptor.IsRegisteredInRoleManager)
+                    yield return _handles[i].Descriptor;
+        }
+
         internal static void ApplyOnAssign(RoleBehaviour role, PlayerControl player)
         {
             for (int i = 0; i < _handles.Count; i++)

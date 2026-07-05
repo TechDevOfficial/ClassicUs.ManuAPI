@@ -9,6 +9,7 @@ namespace ClassicUs.ManuAPI
         private readonly string _name;
         private readonly Func<Sprite, Sprite> _spriteFactory;
         private readonly Func<bool> _isVisible;
+        private readonly Func<bool> _canActivate;
         private readonly Action _onClick;
         private readonly AspectPosition.EdgeAlignments _alignment;
         private readonly Vector3 _distanceFromEdge;
@@ -22,13 +23,14 @@ namespace ClassicUs.ManuAPI
 
         public Action OnEffectExpired;
 
-        public AbilityButton(string name, Func<Sprite, Sprite> spriteFactory, Func<bool> isVisible, Action onClick,
+        public AbilityButton(string name, Func<Sprite, Sprite> spriteFactory, Func<bool> isVisible, Func<bool> canActivate, Action onClick,
             AspectPosition.EdgeAlignments alignment = AspectPosition.EdgeAlignments.LeftBottom,
             Vector3? distanceFromEdge = null)
         {
             _name = name;
             _spriteFactory = spriteFactory;
             _isVisible = isVisible;
+            _canActivate = canActivate;
             _onClick = onClick;
             _alignment = alignment;
             _distanceFromEdge = distanceFromEdge ?? new Vector3(1.4f, 1f, 0f);
@@ -48,6 +50,8 @@ namespace ClassicUs.ManuAPI
             bool show = _isVisible();
             if (_buttonGo.activeSelf != show) _buttonGo.SetActive(show);
             if (!show) return;
+
+            bool canActivate = _canActivate == null || _canActivate();
 
             if (_effectRemaining > 0f)
             {
@@ -77,7 +81,8 @@ namespace ClassicUs.ManuAPI
                     _cooldownText.text = string.Empty;
                     _cooldownText.color = Color.white;
                 }
-                if (_renderer != null) _renderer.color = Color.white;
+                if (_renderer != null)
+                    _renderer.color = canActivate ? Color.white : new Color(0.45f, 0.45f, 0.45f, 0.55f);
             }
         }
 
@@ -134,6 +139,8 @@ namespace ClassicUs.ManuAPI
         private void HandleClick()
         {
             if (IsOnCooldown) return;
+            if (_canActivate != null && !_canActivate()) return;
+
             _onClick?.Invoke();
         }
 

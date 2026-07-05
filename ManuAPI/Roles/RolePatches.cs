@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ClassicUs.Manactor;
 using HarmonyLib;
 using UnityEngine;
@@ -195,15 +196,157 @@ namespace ClassicUs.ManuAPI
             {
                 ManactorAPI.FlushPendingIl2CppTypeRegistrations();
                 RoleRegistry.EnsureAllTypesRegistered();
+                ManactorAPI.FlushPendingIl2CppTypeRegistrations();
+                RoleRegistry.EnsureAllTypesRegistered();
             }
             catch (Exception e) { ManuAPIPlugin.Log.LogError("Flush pending role registrations: " + e); }
         }
     }
 
+    internal static class FreeplayRoleFolderRegistration
+    {
+        public static void Force(string source)
+        {
+            RoleRegistrationForcer.Force();
+
+            try
+            {
+                if (RoleManager.InstanceExists && RoleManager.Instance.allRoles != null)
+                    ManuAPIPlugin.Log.LogDebug($"Freeplay role folder registration forced from {source}; roles={RoleManager.Instance.allRoles.Count}.");
+            }
+            catch (Exception e) { ManuAPIPlugin.Log.LogError($"Freeplay role folder registration ({source}): " + e); }
+        }
+
+        public static void AddMissingRoleButtons(TaskAdderGame game)
+        {
+            Force("TaskAdderGame.OpenRoleFolder.Postfix");
+
+            try
+            {
+                if (game == null || game.RoleButton == null || game.TaskParent == null || game.ActiveItems == null) return;
+
+                var visibleRoleNames = new HashSet<string>();
+                for (int i = 0; i < game.ActiveItems.Count; i++)
+                {
+                    var item = game.ActiveItems[i];
+                    if (item == null) continue;
+
+                    var existingButton = item.GetComponent<TaskAddButton>();
+                    if (existingButton != null && existingButton.IsRole && !string.IsNullOrEmpty(existingButton.RoleName))
+                        visibleRoleNames.Add(existingButton.RoleName);
+                }
+
+                int added = 0;
+                foreach (var role in RoleRegistry.RegisteredCustomRoles())
+                {
+                    if (role == null || string.IsNullOrEmpty(role.AssignedRoleName)) continue;
+                    if (!visibleRoleNames.Add(role.AssignedRoleName)) continue;
+
+                    var clone = UnityEngine.Object.Instantiate(game.RoleButton.gameObject, game.TaskParent);
+                    clone.name = "ManuAPI_" + role.RoleTypeName + "_FreeplayRoleButton";
+
+                    var setRoleButton = clone.GetComponent<SetRoleButton>();
+                    if (setRoleButton != null) setRoleButton.enabled = false;
+
+                    var taskButton = clone.GetComponent<TaskAddButton>();
+                    if (taskButton == null)
+                    {
+                        UnityEngine.Object.Destroy(clone);
+                        continue;
+                    }
+
+                    taskButton.IsRole = true;
+                    taskButton.RoleName = role.AssignedRoleName;
+                    taskButton.MyTask = null;
+                    if (taskButton.Text != null) taskButton.Text.text = role.DisplayName;
+
+                    PositionAppendedButton(game, clone.transform);
+                    game.ActiveItems.Add(clone.transform);
+                    clone.SetActive(true);
+                    added++;
+                }
+
+                if (added > 0)
+                {
+                    game.ApplyClickMask();
+                    ManuAPIPlugin.Log.LogInfo($"Added {added} ManuAPI role button(s) to the Freeplay role folder.");
+                }
+            }
+            catch (Exception e)
+            {
+                ManuAPIPlugin.Log.LogError("Add ManuAPI role buttons to Freeplay role folder: " + e);
+            }
+        }
+
+        private static void PositionAppendedButton(TaskAdderGame game, Transform target)
+        {
+            var rolePositions = new List<Vector3>();
+            for (int i = 0; i < game.ActiveItems.Count; i++)
+            {
+                var item = game.ActiveItems[i];
+                if (item == null) continue;
+
+                var button = item.GetComponent<TaskAddButton>();
+                if (button != null && button.IsRole)
+                    rolePositions.Add(item.localPosition);
+            }
+
+            if (rolePositions.Count <= 0)
+            {
+                target.localPosition = game.RoleButton.transform.localPosition;
+                return;
+            }
+
+            if (rolePositions.Count == 1)
+            {
+                float spacing = Math.Abs(game.lineHeight);
+                if (spacing < 0.05f) spacing = 0.45f;
+
+                var fallbackNext = rolePositions[0];
+                fallbackNext.y -= spacing;
+                target.localPosition = fallbackNext;
+                return;
+            }
+
+            var delta = rolePositions[rolePositions.Count - 1] - rolePositions[rolePositions.Count - 2];
+            if (delta.sqrMagnitude < 0.0025f)
+                delta = new Vector3(0f, -Math.Max(Math.Abs(game.lineHeight), 0.45f), 0f);
+
+            var projectedNext = rolePositions[rolePositions.Count - 1] + delta;
+            target.localPosition = projectedNext;
+        }
+    }
+
+    [HarmonyPatch(typeof(TaskAdderGame), nameof(TaskAdderGame.Begin))]
+    internal static class TaskAdderGame_Begin_RoleRegistry_Patch
+    {
+        private static void Prefix() => FreeplayRoleFolderRegistration.Force("TaskAdderGame.Begin");
+    }
+
+    [HarmonyPatch(typeof(TaskAdderGame), nameof(TaskAdderGame.OpenRoleFolder))]
+    internal static class TaskAdderGame_OpenRoleFolder_RoleRegistry_Patch
+    {
+        private static void Prefix() => FreeplayRoleFolderRegistration.Force("TaskAdderGame.OpenRoleFolder");
+
+        private static void Postfix(TaskAdderGame __instance) => FreeplayRoleFolderRegistration.AddMissingRoleButtons(__instance);
+    }
+
     [HarmonyPatch(typeof(TaskFolder), nameof(TaskFolder.ShowRoles))]
     internal static class TaskFolder_ShowRoles_Patch
     {
-        private static void Prefix() => RoleRegistrationForcer.Force();
+        private static void Prefix() => FreeplayRoleFolderRegistration.Force("TaskFolder.ShowRoles");
+    }
+
+    [HarmonyPatch(typeof(TaskFolder), nameof(TaskFolder.Start))]
+    internal static class TaskFolder_Start_Patch
+    {
+        private static void Prefix() => FreeplayRoleFolderRegistration.Force("TaskFolder.Start");
+    }
+
+    [HarmonyPatch(typeof(TaskFolder), nameof(TaskFolder.OnClick))]
+    internal static class TaskFolder_OnClick_Patch
+    {
+        private static void Prefix() => FreeplayRoleFolderRegistration.Force("TaskFolder.OnClick");
     }
 
     [HarmonyPatch(typeof(RoleManager), nameof(RoleManager.AssignRolesForTeam))]

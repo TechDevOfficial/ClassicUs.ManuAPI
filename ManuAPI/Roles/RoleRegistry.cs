@@ -26,8 +26,29 @@ namespace ClassicUs.ManuAPI
             });
         }
 
+        private static bool _nativeTypesWarmedUp;
+
+        internal static void WarmUpNativeRoleTypes()
+        {
+            if (_nativeTypesWarmedUp) return;
+            if (!RoleManager.InstanceExists) return;
+            var roles = RoleManager.Instance.allRoles;
+            if (roles == null || roles.Count == 0) return;
+
+            foreach (var r in roles)
+            {
+                if (r == null) continue;
+                try { _ = r.AllOptions; }
+                catch (Exception e) { ManuAPIPlugin.Log.LogError("WarmUpNativeRoleTypes: " + e); }
+                _nativeTypesWarmedUp = true;
+                break;
+            }
+        }
+
         internal static void EnsureAllTypesRegistered()
         {
+            WarmUpNativeRoleTypes();
+
             for (int i = 0; i < _handles.Count; i++)
             {
                 var h = _handles[i];

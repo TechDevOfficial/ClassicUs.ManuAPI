@@ -14,6 +14,7 @@ namespace ClassicUs.ManuAPI
         private readonly Transform _parent;
         private readonly NumberOption _template;
         private readonly bool _isHost;
+        private readonly int _baseItemCount;
         private int _row;
 
         internal SettingsMenuBuilder(GameSettingMenu menu, Transform parent, NumberOption template, int startRow)
@@ -21,6 +22,7 @@ namespace ClassicUs.ManuAPI
             _menu = menu;
             _parent = parent;
             _template = template;
+            _baseItemCount = menu.AllItems?.Count ?? 0;
             _row = startRow;
             _isHost = AmongUsClient.Instance != null && AmongUsClient.Instance.AmHost;
         }
@@ -102,14 +104,15 @@ namespace ClassicUs.ManuAPI
             var existing = _parent.Find(name);
             if (existing != null)
             {
-                float yPos = _menu.YStart - (_menu.AllItems.Count + _row) * _menu.YOffset;
+                float yPos = _menu.YStart - (_baseItemCount + _row) * _menu.YOffset;
                 existing.localPosition = new Vector3(existing.localPosition.x, yPos, existing.localPosition.z);
+                EnsureTracked(existing);
                 return (existing, existing.GetComponentInChildren<TextMeshPro>());
             }
 
             var go = UnityEngine.Object.Instantiate(_template.gameObject, _parent);
             go.name = name;
-            float y = _menu.YStart - (_menu.AllItems.Count + _row) * _menu.YOffset;
+            float y = _menu.YStart - (_baseItemCount + _row) * _menu.YOffset;
             go.transform.localPosition = new Vector3(_template.transform.localPosition.x, y, _template.transform.localPosition.z);
             go.transform.localScale = Vector3.one;
             go.transform.localRotation = Quaternion.identity;
@@ -121,7 +124,20 @@ namespace ClassicUs.ManuAPI
             if (titleText != null) titleText.text = label;
             if (no != null) UnityEngine.Object.Destroy(no);
 
+            EnsureTracked(go.transform);
             return (go.transform, valueText);
+        }
+
+        private void EnsureTracked(Transform item)
+        {
+            if (item == null || _menu.AllItems == null) return;
+            for (int i = 0; i < _menu.AllItems.Count; i++)
+            {
+                if (_menu.AllItems[i] == item)
+                    return;
+            }
+
+            _menu.AllItems.Add(item);
         }
     }
 
@@ -156,6 +172,9 @@ namespace ClassicUs.ManuAPI
                 try { reg.Build(builder); }
                 catch (Exception e) { ManuAPIPlugin.Log.LogError("SettingsMenuAPI build failed: " + e); }
             }
+
+            try { menu.RepositionChildren(); }
+            catch (Exception e) { ManuAPIPlugin.Log.LogError("SettingsMenuAPI RepositionChildren: " + e); }
         }
     }
 

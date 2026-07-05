@@ -1,4 +1,5 @@
 using System;
+using ClassicUs.Manactor;
 using HarmonyLib;
 using UnityEngine;
 
@@ -189,6 +190,19 @@ namespace ClassicUs.ManuAPI
     [HarmonyPatch(typeof(RoleManager), nameof(RoleManager.AssignRolesForTeam))]
     internal static class RoleManager_AssignRolesForTeam_Patch
     {
+        private static void Prefix()
+        {
+            var client = AmongUsClient.Instance;
+            if (client == null || !client.AmHost) return;
+
+            try
+            {
+                ManactorAPI.FlushPendingIl2CppTypeRegistrations();
+                RoleRegistry.EnsureAllTypesRegistered();
+            }
+            catch (Exception e) { ManuAPIPlugin.Log.LogError("Flush pending role registrations: " + e); }
+        }
+
         private static void Postfix(RoleManager __instance, RoleTeamTypes type, int max)
         {
             var client = AmongUsClient.Instance;

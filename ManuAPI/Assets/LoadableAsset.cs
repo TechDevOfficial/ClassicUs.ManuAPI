@@ -10,7 +10,7 @@ namespace ClassicUs.ManuAPI
 
         public T Get()
         {
-            if (_loaded) return _cached;
+            if (_loaded && _cached != null) return _cached;
             _loaded = true;
             try
             {

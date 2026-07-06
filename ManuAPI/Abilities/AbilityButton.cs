@@ -16,6 +16,7 @@ namespace ClassicUs.ManuAPI
 
         private GameObject _buttonGo;
         private SpriteRenderer _renderer;
+        private Sprite _icon;
         private TextMeshPro _cooldownText;
         private PassiveButton _passiveButton;
         private float _cooldownRemaining;
@@ -51,6 +52,8 @@ namespace ClassicUs.ManuAPI
             if (_buttonGo.activeSelf != show) _buttonGo.SetActive(show);
             if (!show) return;
 
+            RefreshIcon();
+
             bool canActivate = _canActivate == null || _canActivate();
 
             if (_effectRemaining > 0f)
@@ -84,6 +87,15 @@ namespace ClassicUs.ManuAPI
                 if (_renderer != null)
                     _renderer.color = canActivate ? Color.white : new Color(0.45f, 0.45f, 0.45f, 0.55f);
             }
+        }
+
+        private void RefreshIcon()
+        {
+            if (_renderer == null || _spriteFactory == null) return;
+
+            _icon = _spriteFactory(_icon);
+            if (_icon != null && _renderer.sprite != _icon)
+                _renderer.sprite = _icon;
         }
 
         private void EnsureCreated(HudManager hud)
@@ -122,8 +134,8 @@ namespace ClassicUs.ManuAPI
             _renderer = clone.GetComponent<SpriteRenderer>();
             if (_renderer == null) _renderer = clone.AddComponent<SpriteRenderer>();
 
-            var sprite = _spriteFactory != null ? _spriteFactory(originalRenderer != null ? originalRenderer.sprite : null) : null;
-            if (sprite != null) _renderer.sprite = sprite;
+            _icon = _spriteFactory != null ? _spriteFactory(originalRenderer != null ? originalRenderer.sprite : null) : null;
+            if (_icon != null) _renderer.sprite = _icon;
             _renderer.color = Color.white;
 
             _cooldownText = clone.GetComponentInChildren<TextMeshPro>();
@@ -152,6 +164,7 @@ namespace ClassicUs.ManuAPI
                 _buttonGo = null;
             }
             _renderer = null;
+            _icon = null;
             _cooldownText = null;
             _passiveButton = null;
             _cooldownRemaining = 0f;

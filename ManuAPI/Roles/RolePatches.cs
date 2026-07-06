@@ -202,6 +202,16 @@ namespace ClassicUs.ManuAPI
     [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.SetRole))]
     internal static class PlayerControl_SetRole_Patch
     {
+        private static bool Prefix(PlayerControl __instance)
+        {
+            try { return !RoleRegistry.HasCustomRoleAssigned(__instance); }
+            catch (Exception e)
+            {
+                ManuAPIPlugin.Log.LogError("PlayerControl.SetRole guard: " + e);
+                return true;
+            }
+        }
+
         private static void Postfix(PlayerControl __instance)
         {
             try { RoleRegistry.ReapplyIfCustomRole(__instance); }

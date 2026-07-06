@@ -327,6 +327,12 @@ namespace ClassicUs.ManuAPI
                 QueuePendingAssignment(playerId, roleTypeName);
         }
 
+        internal static bool HasCustomRoleAssigned(PlayerControl player)
+        {
+            if (player == null || player.Data == null) return false;
+            return _assignedCustomRoles.ContainsKey(player.Data.PlayerId);
+        }
+
         internal static void ReapplyIfCustomRole(PlayerControl player)
         {
             if (player == null || player.Data == null) return;

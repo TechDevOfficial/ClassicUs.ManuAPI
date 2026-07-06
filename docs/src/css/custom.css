@@ -1,0 +1,161 @@
+/**
+ * ManuAPI docs theme — a warm ink/amber palette, distinct from the
+ * default Docusaurus green, tuned for a Reactor-docs-style layout.
+ */
+
+:root {
+  --ifm-color-primary: #b3492f;
+  --ifm-color-primary-dark: #a1421a;
+  --ifm-color-primary-darker: #983e19;
+  --ifm-color-primary-darkest: #7d3315;
+  --ifm-color-primary-light: #c25642;
+  --ifm-color-primary-lighter: #c65f4c;
+  --ifm-color-primary-lightest: #d17862;
+
+  --ifm-background-color: #fbfaf8;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-navbar-background-color: #fbfaf8;
+  --ifm-footer-background-color: #1b1b1d;
+
+  --ifm-font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Helvetica, Arial, sans-serif;
+  --ifm-font-family-monospace: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --ifm-heading-font-weight: 650;
+  --ifm-code-font-size: 88%;
+  --ifm-code-border-radius: 6px;
+  --ifm-global-radius: 10px;
+  --ifm-link-decoration: none;
+  --docusaurus-highlighted-code-line-bg: rgba(179, 73, 47, 0.12);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #e4a56f;
+  --ifm-color-primary-dark: #dd925a;
+  --ifm-color-primary-darker: #db8a4d;
+  --ifm-color-primary-darkest: #c96f2d;
+  --ifm-color-primary-light: #ebb884;
+  --ifm-color-primary-lighter: #edc091;
+  --ifm-color-primary-lightest: #f3d3b2;
+
+  --ifm-background-color: #131315;
+  --ifm-background-surface-color: #1a1a1d;
+  --ifm-navbar-background-color: #131315;
+  --docusaurus-highlighted-code-line-bg: rgba(228, 165, 111, 0.14);
+}
+
+/* ---------- Navbar ---------- */
+
+.navbar {
+  box-shadow: none;
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+  backdrop-filter: blur(8px);
+}
+
+.navbar__title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.navbar__link {
+  font-weight: 500;
+}
+
+/* ---------- Sidebar ---------- */
+
+.theme-doc-sidebar-container {
+  border-right: 1px solid var(--ifm-toc-border-color) !important;
+}
+
+.menu__link {
+  border-radius: 7px;
+  font-size: 0.9rem;
+}
+
+.menu__link--active:not(.menu__link--sublist) {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--ifm-color-primary) 12%, transparent);
+}
+
+.menu__list-item-collapsible:hover {
+  background: transparent;
+}
+
+/* ---------- Content ---------- */
+
+article h1 {
+  letter-spacing: -0.02em;
+}
+
+.markdown h2 {
+  border-bottom: none;
+  margin-top: 2.4rem;
+  letter-spacing: -0.01em;
+}
+
+.markdown table {
+  display: table;
+  width: 100%;
+  font-size: 0.92rem;
+}
+
+.markdown table th {
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--ifm-color-emphasis-600);
+}
+
+/* ---------- Code blocks ---------- */
+
+div[class^='codeBlockContainer'] {
+  border-radius: var(--ifm-global-radius);
+  box-shadow: none;
+  border: 1px solid var(--ifm-toc-border-color);
+}
+
+/* ---------- Admonitions (:::tip etc.) ---------- */
+/* Monochrome, accent-left-border style instead of Infima's multicolor alerts. */
+
+.theme-admonition {
+  border-radius: 10px;
+  box-shadow: none;
+  border: 1px solid var(--ifm-toc-border-color);
+  border-left: 3px solid var(--ifm-color-primary);
+  background: var(--ifm-background-surface-color);
+}
+
+.theme-admonition-tip,
+.theme-admonition-info,
+.theme-admonition-note,
+.theme-admonition-caution,
+.theme-admonition-danger {
+  --ifm-alert-background-color: var(--ifm-background-surface-color);
+  --ifm-alert-background-color-highlight: transparent;
+  --ifm-alert-border-color: var(--ifm-color-primary);
+  --ifm-alert-color: var(--ifm-font-color-base);
+}
+
+.theme-admonition svg {
+  color: var(--ifm-color-primary);
+}
+
+/* ---------- Footer ---------- */
+
+.footer {
+  --ifm-footer-color: #b8b7bd;
+  --ifm-footer-link-color: #e9e7e2;
+  --ifm-footer-title-color: #efeeea;
+}
+
+.footer--dark {
+  background: linear-gradient(180deg, #1b1b1d, #131315);
+}
+
+/* ---------- Pagination / TOC accents ---------- */
+
+.pagination-nav__link {
+  border-radius: 10px;
+}
+
+.table-of-contents__link--active {
+  font-weight: 600;
+}

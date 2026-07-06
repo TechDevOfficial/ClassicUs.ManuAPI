@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ManuAPI — Docs</title>
+<meta name="description" content="ManuAPI is a modding framework for Classic Us (Among Us) — custom roles, ability buttons, kills, settings menus and assets, built on Manactor.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark">M</span>
+    ManuAPI
+  </div>
+  <div class="meta">
+    <span class="pill">v1.3.20</span>
+    <span class="pill">built on Manactor</span>
+    <button class="menu-toggle" aria-label="Toggle navigation">☰</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <nav>
+      <div class="group-title">Start here</div>
+      <a href="#overview">Overview</a>
+      <a href="#install">Installation</a>
+      <a href="#plugin-skeleton">Plugin skeleton</a>
+
+      <div class="group-title">Roles</div>
+      <a href="#roles">Custom roles</a>
+      <a href="#roles-registering">Registering a role</a>
+      <a href="#roles-lifecycle">Lifecycle &amp; text</a>
+
+      <div class="group-title">Abilities</div>
+      <a href="#abilities">Ability buttons</a>
+      <a href="#abilities-grid">Button placement</a>
+
+      <div class="group-title">Kills</div>
+      <a href="#kills">Kill manager</a>
+
+      <div class="group-title">UI</div>
+      <a href="#settings">Settings menu</a>
+      <a href="#badges">Mod badges</a>
+
+      <div class="group-title">Assets</div>
+      <a href="#assets">Loading sprites</a>
+
+      <div class="group-title">Reference</div>
+      <a href="#reference">API at a glance</a>
+    </nav>
+  </aside>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">DOCUMENTATION</div>
+      <h1>Build Classic Us mods without fighting IL2CPP.</h1>
+      <p class="lede">
+        ManuAPI is a small, opinionated framework for Classic Us (Among Us) BepInEx mods.
+        It handles the parts every mod needs — custom roles, ability buttons, kills, settings
+        rows, mod badges — so you can focus on what makes your role interesting.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#install">Get started</a>
+        <a class="btn btn-secondary" href="https://github.com/TechDevOfficial/ClassicUs.ManuAPI">View source</a>
+      </div>
+    </section>
+
+    <section id="overview" class="doc">
+      <h2>Overview</h2>
+      <p class="kicker">What ManuAPI actually gives you</p>
+      <p>
+        Modding an IL2CPP Unity game means every native class is a wrapper around compiled
+        C++ — no source, no debugger, and one wrong Harmony patch can corrupt role assignment
+        for an entire match. ManuAPI exists so you don't have to relearn those lessons every time.
+      </p>
+      <div class="card-grid">
+        <div class="card">
+          <div class="name">Custom roles</div>
+          <div class="desc">Describe a role in a few properties. ManuAPI registers the IL2CPP type, assigns it, and syncs it across clients.</div>
+        </div>
+        <div class="card">
+          <div class="name">Ability buttons</div>
+          <div class="desc">A clone of the native kill button with cooldowns, effects and icons — no manual UI wiring.</div>
+        </div>
+        <div class="card">
+          <div class="name">Kill manager</div>
+          <div class="desc">Host-authoritative kills that can skip the teleport, the animation, or the sound independently.</div>
+        </div>
+        <div class="card">
+          <div class="name">Settings &amp; badges</div>
+          <div class="desc">Inject rows into the real options menu and show your mod's presence in the lobby.</div>
+        </div>
+      </div>
+      <div class="callout">
+        ManuAPI depends on <strong>Manactor</strong> for networking (RPCs, handshakes, lobby-mod
+        detection). You don't need to think about Manactor directly for most of this guide —
+        just make sure your plugin declares <code>[BepInDependency(ManactorPlugin.Guid)]</code>.
+      </div>
+    </section>
+
+    <section id="install" class="doc">
+      <h2>Installation</h2>
+      <p class="kicker">NuGet package references</p>
+      <p>Add both packages to your mod's <code>.csproj</code>. ManuAPI carries Manactor as a dependency, but pin both explicitly so builds stay reproducible.</p>
+<pre><code>&lt;ItemGroup&gt;
+  &lt;PackageReference Include="ClassicUs.GameLibs" Version="2026.7.4.1" PrivateAssets="all" /&gt;
+  &lt;PackageReference Include="ClassicUs.Manactor" Version="1.0.26" PrivateAssets="all" ExcludeAssets="runtime" /&gt;
+  &lt;PackageReference Include="ClassicUs.ManuAPI" Version="1.3.20" PrivateAssets="all" ExcludeAssets="runtime" /&gt;
+&lt;/ItemGroup&gt;</code></pre>
+      <p><code>ExcludeAssets="runtime"</code> keeps the DLL out of your own build output — Manactor and ManuAPI are loaded as their own BepInEx plugins, side by side with yours.</p>
+    </section>
+
+    <section id="plugin-skeleton" class="doc">
+      <h2>Plugin skeleton</h2>
+      <p class="kicker">The shape every ManuAPI mod starts from</p>
+<pre><code>[BepInPlugin(Guid, "My Mod", Version)]
+[BepInDependency(ManactorPlugin.Guid)]
+[BepInDependency(ManuAPIPlugin.Guid)]
+public class MyModPlugin : BasePlugin
+{
+    public const string Guid = "yourname.mymod";
+    public const string Version = "1.0.0";
+
+    public override void Load()
+    {
+        ManactorAPI.Register("MyMod", Version);
+
+        RoleRegistry.Register(new MyRoleDescriptor(), () => IsTypeReady,
+            EnsureIl2CppTypeRegistered, () => Il2CppType.Of&lt;MyRole&gt;());
+
+        ModBadgeAPI.RegisterLoadedModBadge("MyMod", Version, new Color(0.4f, 0.6f, 1f, 1f));
+
+        new Harmony(Guid).PatchAll();
+    }
+}</code></pre>
+      <p>Everything below plugs into this <code>Load()</code> method.</p>
+    </section>
+
+    <section id="roles" class="doc">
+      <h2>Custom roles</h2>
+      <p class="kicker">ClassicUs.ManuAPI.CustomRole</p>
+      <p>
+        A role is a plain C# class describing what it looks like and how it behaves — no manual
+        IL2CPP boilerplate. Inherit from <code>CustomImpostorRole</code>, <code>CustomCrewmateRole</code>,
+        or <code>CustomRole</code> directly for neutral roles.
+      </p>
+<pre><code>internal class VaderRoleDescriptor : CustomImpostorRole
+{
+    public override string DisplayName => "Darth Vader";
+    public override string RoleTypeName => "DarthVaderRole";
+    public override int Count => 1;
+    public override float RoleChancePercent => 100f;
+    public override Color TeamColor => new(0.9f, 0.05f, 0.05f, 1f);
+    public override string Description =>
+        "You are Darth Vader. Spin your saber and cut down anyone who touches it.";
+    public override string DescriptionShort => "Use the saber around you.";
+    public override string EjectionText(string playerName) => $"{playerName} was Darth Vader.";
+}</code></pre>
+
+      <h3>What each property controls</h3>
+      <table>
+        <tr><th>Member</th><th>Purpose</th></tr>
+        <tr><td><code>DisplayName</code></td><td>Shown in the intro splash, task list and settings menu.</td></tr>
+        <tr><td><code>RoleTypeName</code></td><td>Must match the name of your IL2CPP-registered <code>RoleBehaviour</code> subclass.</td></tr>
+        <tr><td><code>Count</code> / <code>RoleChancePercent</code></td><td>How many candidates to pick, and the odds each one actually gets the role.</td></tr>
+        <tr><td><code>CanVent</code> / <code>CanSabotage</code> / <code>CanUseKillButton</code></td><td>Impostor roles default all three to <code>true</code>; crewmate roles default to <code>false</code>.</td></tr>
+        <tr><td><code>TeamColor</code></td><td>Overrides the name-tag and intro-screen color.</td></tr>
+        <tr><td><code>EjectionText(name)</code></td><td>Return <code>null</code> to fall back to the vanilla wording.</td></tr>
+      </table>
+    </section>
+
+    <section id="roles-registering" class="doc">
+      <h2>Registering a role</h2>
+      <p class="kicker">RoleRegistry.Register</p>
+      <p>
+        <code>RoleRegistry</code> needs three things: your descriptor, a way to check whether the
+        IL2CPP type is ready yet, a way to trigger that registration, and the type itself once
+        it exists. This looks fiddly because IL2CPP class injection is asynchronous — ManuAPI
+        retries automatically so you never have to poll for it yourself.
+      </p>
+<pre><code>public static bool IsTypeReady;
+private static bool _classInjectorAttempted;
+
+RoleRegistry.Register(new VaderRoleDescriptor(), () => IsTypeReady,
+    EnsureIl2CppTypeRegistered, () => Il2CppType.Of&lt;DarthVaderRole&gt;());
+
+public static void EnsureIl2CppTypeRegistered()
+{
+    if (_classInjectorAttempted) return;
+    _classInjectorAttempted = true;
+
+    ManactorAPI.RegisterIl2CppType(() =>
+    {
+        ClassInjector.RegisterTypeInIl2Cpp&lt;DarthVaderRole&gt;();
+        IsTypeReady = true;
+    });
+}</code></pre>
+      <div class="callout">
+        <code>DarthVaderRole</code> itself is a thin subclass of the native <code>RoleBehaviour</code> —
+        it doesn't need any ManuAPI-specific code. ManuAPI reads your <code>CustomRole</code>
+        descriptor to fill in names, colors, descriptions and team behaviour at runtime.
+      </div>
+    </section>
+
+    <section id="roles-lifecycle" class="doc">
+      <h2>Lifecycle &amp; text</h2>
+      <p class="kicker">OnAssigned, and where your text actually shows up</p>
+      <p>
+        Override <code>OnAssigned</code> for anything that needs to happen the moment a player
+        becomes your role — showing UI, granting an ability, playing a sound.
+      </p>
+<pre><code>public override void OnAssigned(RoleBehaviour role, PlayerControl player)
+{
+    base.OnAssigned(role, player);
+    // e.g. warm up ability state for this player
+}</code></pre>
+      <p>
+        ManuAPI patches the intro cutscene, role descriptions, team color and kill-ability text
+        so your custom strings show up everywhere a native role's would — you don't patch any
+        of that yourself.
+      </p>
+    </section>
+
+    <section id="abilities" class="doc">
+      <h2>Ability buttons</h2>
+      <p class="kicker">ClassicUs.ManuAPI.CustomAbility</p>
+      <p>
+        A <code>CustomAbility</code> clones the native kill button — same size, same cluster,
+        same cooldown ring — and hands you five things to fill in: a name, an icon, a visibility
+        check, an activation check, and what happens on click.
+      </p>
+<pre><code>internal class SaberAbility : CustomAbility
+{
+    protected override string Name => "SaberButton";
+    protected override float Cooldown => VaderPlugin.ActiveCooldown;
+
+    protected override Sprite CreateIcon(Sprite original) => VaderAssets.LoadButton(original);
+
+    protected override bool IsVisible()
+    {
+        var local = PlayerControl.LocalPlayer;
+        return VaderPlugin.IsVader(local) && !local.Data.IsDead;
+    }
+
+    protected override bool CanActivate()
+    {
+        var local = PlayerControl.LocalPlayer;
+        return IsVisible() && !VaderSaberSystem.IsActive(local.Data.PlayerId);
+    }
+
+    protected override void OnActivate()
+    {
+        var local = PlayerControl.LocalPlayer;
+        VaderSaberSystem.RequestStart(local.Data.PlayerId);
+        StartEffect(VaderPlugin.ActiveDuration);
+    }
+}
+
+internal static class SaberAbilityHolder
+{
+    private static readonly SaberAbility _ability = new();
+    public static void Tick(HudManager hud) => _ability.Tick(hud);
+}</code></pre>
+      <p>Call <code>Tick(hud)</code> once per frame from a Harmony patch on <code>HudManager.FixedUpdate</code>:</p>
+<pre><code>[HarmonyPatch(typeof(HudManager), nameof(HudManager.FixedUpdate))]
+internal static class HudManager_FixedUpdate_Patch
+{
+    private static void Prefix(HudManager __instance) => SaberAbilityHolder.Tick(__instance);
+}</code></pre>
+      <div class="callout">
+        You never have to reset the button yourself. <code>CustomAbility</code> registers itself
+        automatically, and ManuAPI clears every registered ability on death, restart and
+        game-end — <code>HudManager.Start</code>, <code>AmongUsClient.OnGameEnd</code> /
+        <code>ExitGame</code>, <code>EndGameManager.NextGame</code> / <code>Exit</code>.
+      </div>
+    </section>
+
+    <section id="abilities-grid" class="doc">
+      <h2>Button placement</h2>
+      <p class="kicker">ClassicUs.ManuAPI.AbilityButtonGrid</p>
+      <p>
+        Buttons anchor to the bottom-left corner like the native kill button. Override
+        <code>DistanceFromEdge</code> to place a second or third button next to the first —
+        <code>AbilityButtonGrid</code> holds the known-good slot positions so your buttons
+        line up instead of overlapping.
+      </p>
+<pre><code>protected override AspectPosition.EdgeAlignments Alignment => AspectPosition.EdgeAlignments.LeftBottom;
+protected override Vector3 DistanceFromEdge => AbilityButtonGrid.SlotA;</code></pre>
+      <table>
+        <tr><th>Slot</th><th>Distance from edge</th></tr>
+        <tr><td><code>AbilityButtonGrid.DefaultSlot</code></td><td>(1.40, 1, 0) — same spot as the native kill button</td></tr>
+        <tr><td><code>AbilityButtonGrid.SlotA</code></td><td>(1.25, 1, 0) — one button to the left</td></tr>
+        <tr><td><code>AbilityButtonGrid.SlotB</code></td><td>(2.55, 1, 0) — one button to the right</td></tr>
+      </table>
+    </section>
+
+    <section id="kills" class="doc">
+      <h2>Kill manager</h2>
+      <p class="kicker">ClassicUs.ManuAPI.KillManager</p>
+      <p>
+        <code>KillManager.Kill</code> is a full re-implementation of the murder flow — it never
+        calls the native <code>RpcMurderPlayer</code>/kill-animation path at all, so every part
+        of it is a plain flag instead of a side effect you have to fight afterward.
+      </p>
+<pre><code>KillManager.Kill(owner, target, new KillRequest
+{
+    TeleportKiller = false,   // never touches the killer's position or movement
+    CreateDeadBody = true,    // spawns a body with the victim's real player color
+    PlayKillSound = true,
+    ShowKillAnimation = true, // the victim's own close-up cutscene, purely cosmetic
+});</code></pre>
+      <table>
+        <tr><th>Option</th><th>Default</th><th>Effect</th></tr>
+        <tr><td><code>TeleportKiller</code></td><td><code>true</code></td><td>When <code>false</code>, the killer's position and movement are never touched — nothing to snap back.</td></tr>
+        <tr><td><code>CreateDeadBody</code></td><td><code>true</code></td><td>Spawns a body from the killer's own <code>KillAnimations</code> prefab, colored to match the victim.</td></tr>
+        <tr><td><code>PlayKillSound</code></td><td><code>true</code></td><td>Plays the killer's kill sound effect for the local client.</td></tr>
+        <tr><td><code>ShowKillAnimation</code></td><td><code>true</code></td><td>Shows the native kill overlay to the victim's own client only.</td></tr>
+      </table>
+      <div class="callout">
+        Kills are host-authoritative and networked automatically — call <code>KillManager.Kill</code>
+        from any client, and it routes through Manactor's RPC system to the host before applying.
+      </div>
+    </section>
+
+    <section id="settings" class="doc">
+      <h2>Settings menu</h2>
+      <p class="kicker">ClassicUs.ManuAPI.SettingsMenuAPI</p>
+      <p>Register a block of rows once; ManuAPI injects them right after the vanilla options and repositions everything using the game's own layout pass.</p>
+<pre><code>SettingsMenuAPI.Register(3, builder =>
+{
+    builder.AddToggle("VaderEnabled", "Enable Darth Vader",
+        () => _cfgEnabled.Value,
+        val => { _cfgEnabled.Value = val; Save(); });
+
+    builder.AddNumeric("VaderCount", "Darth Vader Count", 1f, 0f, 3f, "0",
+        () => _cfgCount.Value,
+        val => { _cfgCount.Value = (int)val; Save(); });
+
+    builder.ExpandScroller(3f);
+});</code></pre>
+      <table>
+        <tr><th>Method</th><th>Use for</th></tr>
+        <tr><td><code>AddToggle(key, label, getter, setter)</code></td><td>On/off options.</td></tr>
+        <tr><td><code>AddNumeric(key, label, step, min, max, format, getter, setter)</code></td><td>Sliders — counts, percentages, durations.</td></tr>
+        <tr><td><code>ExpandScroller(rows)</code></td><td>Call once at the end with the total row count you added, so the menu scrolls far enough to show them all.</td></tr>
+      </table>
+    </section>
+
+    <section id="badges" class="doc">
+      <h2>Mod badges</h2>
+      <p class="kicker">ClassicUs.ManuAPI.ModBadgeAPI</p>
+      <p>Let players see your mod is active — one line in the loaded-mods list, one tag in the lobby.</p>
+<pre><code>ModBadgeAPI.RegisterLoadedModBadge("VaderMod", Version, new Color(0.9f, 0.05f, 0.05f, 1f));
+ModBadgeAPI.RegisterPrelobbyTag("Vader Mod", "#E60D0D");</code></pre>
+    </section>
+
+    <section id="assets" class="doc">
+      <h2>Loading sprites</h2>
+      <p class="kicker">ClassicUs.ManuAPI.LoadableSprite</p>
+      <p>
+        Embed a PNG as a resource and wrap it in a <code>LoadableSprite</code>. It caches the
+        result but retries automatically if Unity ever tears the asset down mid-match —
+        the classic cause of an ability icon quietly reverting to the native kill sprite.
+      </p>
+<pre><code>&lt;ItemGroup&gt;
+  &lt;EmbeddedResource Include="Assets\saber_button.png"&gt;
+    &lt;LogicalName&gt;saber_button.png&lt;/LogicalName&gt;
+  &lt;/EmbeddedResource&gt;
+&lt;/ItemGroup&gt;</code></pre>
+<pre><code>internal static class VaderAssets
+{
+    private static readonly Assembly _assembly = typeof(VaderAssets).Assembly;
+    private static readonly LoadableSprite _button = new(_assembly, "saber_button.png", 100f);
+
+    public static Sprite LoadButton(Sprite original) => _button.Get() ?? original;
+}</code></pre>
+    </section>
+
+    <section id="reference" class="doc">
+      <h2>API at a glance</h2>
+      <p class="kicker">Everything on this page, in one table</p>
+      <table>
+        <tr><th>Namespace</th><th>Type</th><th>What it's for</th></tr>
+        <tr><td>Roles</td><td><code>CustomRole</code> / <code>CustomImpostorRole</code> / <code>CustomCrewmateRole</code></td><td>Describe a role's identity and team behaviour.</td></tr>
+        <tr><td>Roles</td><td><code>RoleRegistry</code></td><td>Register and sync a role across the lobby.</td></tr>
+        <tr><td>Abilities</td><td><code>CustomAbility</code></td><td>A ticking, self-resetting ability button.</td></tr>
+        <tr><td>Abilities</td><td><code>AbilityButtonGrid</code></td><td>Known-good bottom-left button slots.</td></tr>
+        <tr><td>Kills</td><td><code>KillManager</code> / <code>KillRequest</code></td><td>Host-authoritative kills with independently toggleable side effects.</td></tr>
+        <tr><td>Options</td><td><code>SettingsMenuAPI</code> / <code>SettingsMenuBuilder</code></td><td>Rows in the real in-game settings menu.</td></tr>
+        <tr><td>UI</td><td><code>ModBadgeAPI</code></td><td>Loaded-mod list entry and lobby tag.</td></tr>
+        <tr><td>Assets</td><td><code>LoadableSprite</code> / <code>AssetBundleManager</code></td><td>Embedded PNGs and asset bundles that survive teardown.</td></tr>
+      </table>
+    </section>
+
+    <footer class="site">
+      <span>ManuAPI — built for Classic Us.</span>
+      <span>Runs on top of Manactor.</span>
+    </footer>
+  </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

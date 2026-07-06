@@ -1,11 +1,28 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ClassicUs.ManuAPI
 {
     public abstract class CustomAbility
     {
+        private static readonly List<CustomAbility> _allAbilities = new();
+
         private AbilityButton _button;
+
+        protected CustomAbility()
+        {
+            _allAbilities.Add(this);
+        }
+
+        internal static void ResetAll()
+        {
+            foreach (var ability in _allAbilities)
+            {
+                try { ability.Reset(); }
+                catch (Exception e) { ManuAPIPlugin.Log.LogError("CustomAbility.ResetAll: " + e); }
+            }
+        }
 
         protected abstract string Name { get; }
         protected virtual float Cooldown => 0f;

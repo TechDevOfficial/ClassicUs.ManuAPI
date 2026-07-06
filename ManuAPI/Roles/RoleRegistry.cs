@@ -16,6 +16,8 @@ namespace ClassicUs.ManuAPI
             public Func<bool> IsClassReady;
             public Action EnsureClassRegistered;
             public Func<Il2CppSystem.Type> GetIl2CppType;
+            public RoleBehaviour RegisteredRole;
+            public bool AddAttempted;
         }
 
         private static readonly List<Handle> _handles = new();
@@ -70,7 +72,7 @@ namespace ClassicUs.ManuAPI
                 }
 
                 if (!RoleManager.InstanceExists) continue;
-                if (h.Descriptor.IsRegisteredInRoleManager && FindRegisteredRole(h.Descriptor.RoleTypeName) != null) continue;
+                if (h.RegisteredRole != null || h.Descriptor.IsRegisteredInRoleManager) continue;
 
                 TryAddRole(RoleManager.Instance, h);
             }
@@ -84,19 +86,22 @@ namespace ClassicUs.ManuAPI
                 {
                     foreach (var r in rm.allRoles)
                     {
-                        if (r == null || r.GetIl2CppType().Name != h.Descriptor.RoleTypeName) continue;
+                        if (!MatchesRegisteredRole(r, h.Descriptor)) continue;
+                        h.RegisteredRole = r;
                         h.Descriptor.AssignedRoleName = r.roleCodeName;
                         return;
                     }
                 }
 
+                h.AddAttempted = true;
                 rm.AddRole(h.GetIl2CppType(), h.Descriptor.DisplayName);
 
                 if (rm.allRoles == null) return;
                 foreach (var role in rm.allRoles)
                 {
-                    if (role != null && role.GetIl2CppType().Name == h.Descriptor.RoleTypeName)
+                    if (MatchesRegisteredRole(role, h.Descriptor))
                     {
+                        h.RegisteredRole = role;
                         h.Descriptor.AssignedRoleName = role.roleCodeName;
                         ManuAPIPlugin.Log.LogInfo(h.Descriptor.RoleTypeName + " registered as role '" + role.roleCodeName + "'.");
                         break;
@@ -105,6 +110,23 @@ namespace ClassicUs.ManuAPI
             }
             catch (Exception e)
             {
+                if (e.Message != null && e.Message.Contains("already exists"))
+                {
+                    var existing = FindRegisteredRole(h.Descriptor);
+                    if (existing != null)
+                    {
+                        h.RegisteredRole = existing;
+                        h.Descriptor.AssignedRoleName = existing.roleCodeName;
+                        return;
+                    }
+
+                    if (string.IsNullOrEmpty(h.Descriptor.AssignedRoleName))
+                        h.Descriptor.AssignedRoleName = h.Descriptor.RoleTypeName;
+                    h.AddAttempted = true;
+                    ManuAPIPlugin.Log.LogWarning("RoleRegistry: " + h.Descriptor.RoleTypeName + " already exists; keeping role name '" + h.Descriptor.AssignedRoleName + "' and not retrying registration.");
+                    return;
+                }
+
                 ManuAPIPlugin.Log.LogError("RoleRegistry: failed to register " + h.Descriptor.RoleTypeName + ": " + e);
             }
         }
@@ -157,6 +179,12 @@ namespace ClassicUs.ManuAPI
             for (int i = 0; i < _handles.Count; i++)
                 if (_handles[i].Descriptor.IsRegisteredInRoleManager)
                     yield return _handles[i].Descriptor;
+        }
+
+        public static void ClearRuntimeAssignments()
+        {
+            _pendingAssignments.Clear();
+            _assignedCustomRoles.Clear();
         }
 
         internal static void ProcessPendingAssignments()
@@ -225,10 +253,10 @@ namespace ClassicUs.ManuAPI
                 if (h.Descriptor.TeamType != type) continue;
 
                 EnsureAllTypesRegistered();
-                if (!h.Descriptor.IsRegisteredInRoleManager || FindRegisteredRole(h.Descriptor.RoleTypeName) == null)
+                if (FindRegisteredRole(h.Descriptor) == null && !h.Descriptor.IsRegisteredInRoleManager)
                 {
                     TryAddRole(rm, h);
-                    if (!h.Descriptor.IsRegisteredInRoleManager || FindRegisteredRole(h.Descriptor.RoleTypeName) == null)
+                    if (FindRegisteredRole(h.Descriptor) == null)
                     {
                         ManuAPIPlugin.Log.LogWarning("RoleRegistry: skipping " + h.Descriptor.RoleTypeName + " assignment; role is not registered in current RoleManager.");
                         continue;
@@ -316,11 +344,12 @@ namespace ClassicUs.ManuAPI
         {
             if (player == null || player.Data == null || descriptor == null) return false;
 
-            var role = FindRegisteredRole(descriptor.RoleTypeName);
+            var role = FindRegisteredRole(descriptor);
             if (role == null)
             {
-                EnsureAllTypesRegistered();
-                role = FindRegisteredRole(descriptor.RoleTypeName);
+                if (!descriptor.IsRegisteredInRoleManager)
+                    EnsureAllTypesRegistered();
+                role = FindRegisteredRole(descriptor);
                 if (role == null)
                 {
                     if (logFailures)
@@ -363,19 +392,63 @@ namespace ClassicUs.ManuAPI
             return null;
         }
 
-        private static RoleBehaviour FindRegisteredRole(string roleTypeName)
+        private static RoleBehaviour FindRegisteredRole(CustomRole descriptor)
         {
+            for (int i = 0; i < _handles.Count; i++)
+            {
+                var h = _handles[i];
+                if (h.Descriptor != descriptor || h.RegisteredRole == null) continue;
+                return h.RegisteredRole;
+            }
+
             if (!RoleManager.InstanceExists) return null;
             var roles = RoleManager.Instance.allRoles;
             if (roles == null) return null;
 
             foreach (var role in roles)
             {
-                if (role != null && role.GetIl2CppType().Name == roleTypeName)
+                if (MatchesRegisteredRole(role, descriptor))
+                {
+                    CacheRegisteredRole(descriptor, role);
                     return role;
+                }
             }
 
             return null;
+        }
+
+        private static void CacheRegisteredRole(CustomRole descriptor, RoleBehaviour role)
+        {
+            for (int i = 0; i < _handles.Count; i++)
+            {
+                var h = _handles[i];
+                if (h.Descriptor != descriptor) continue;
+                h.RegisteredRole = role;
+                return;
+            }
+        }
+
+        private static bool MatchesRegisteredRole(RoleBehaviour role, CustomRole descriptor)
+        {
+            if (role == null || descriptor == null) return false;
+
+            try
+            {
+                var type = role.GetIl2CppType();
+                if (type != null && type.Name == descriptor.RoleTypeName) return true;
+            }
+            catch { }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(role.roleCodeName) &&
+                    (role.roleCodeName == descriptor.RoleTypeName || role.roleCodeName == descriptor.AssignedRoleName ||
+                     role.roleCodeName == descriptor.DisplayName))
+                    return true;
+            }
+            catch { }
+
+            return false;
         }
     }
 }

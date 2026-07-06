@@ -1,10 +1,15 @@
 using System;
 using System.Collections.Generic;
+using ClassicUs.Manactor;
 
 namespace ClassicUs.ManuAPI
 {
     public static class RoleRegistry
     {
+        private const string RpcAssignCustomRoleKey = "classicus.manuapi.AssignCustomRole";
+        private static readonly List<(byte playerId, string roleTypeName)> _pendingAssignments = new();
+        private static readonly Dictionary<byte, string> _assignedCustomRoles = new();
+
         private sealed class Handle
         {
             public CustomRole Descriptor;
@@ -14,6 +19,11 @@ namespace ClassicUs.ManuAPI
         }
 
         private static readonly List<Handle> _handles = new();
+
+        internal static void RegisterNetworkHandlers()
+        {
+            ManactorAPI.RegisterRpcMethods(typeof(RoleRegistry));
+        }
 
         public static void Register(CustomRole descriptor, Func<bool> isClassReady, Action ensureClassRegistered, Func<Il2CppSystem.Type> getIl2CppType)
         {
@@ -59,8 +69,8 @@ namespace ClassicUs.ManuAPI
                     continue;
                 }
 
-                if (h.Descriptor.IsRegisteredInRoleManager) continue;
                 if (!RoleManager.InstanceExists) continue;
+                if (h.Descriptor.IsRegisteredInRoleManager && FindRegisteredRole(h.Descriptor.RoleTypeName) != null) continue;
 
                 TryAddRole(RoleManager.Instance, h);
             }
@@ -149,6 +159,43 @@ namespace ClassicUs.ManuAPI
                     yield return _handles[i].Descriptor;
         }
 
+        internal static void ProcessPendingAssignments()
+        {
+            ReapplyAssignedCustomRoles();
+
+            if (_pendingAssignments.Count == 0) return;
+            if (!RoleManager.InstanceExists) return;
+
+            EnsureAllTypesRegistered();
+
+            for (int i = _pendingAssignments.Count - 1; i >= 0; i--)
+            {
+                var pending = _pendingAssignments[i];
+                var descriptor = FindDescriptor(pending.roleTypeName);
+                var player = FindPlayer(pending.playerId);
+                if (descriptor == null || player == null) continue;
+
+                if (AssignCustomRole(player, descriptor, false, false))
+                    _pendingAssignments.RemoveAt(i);
+            }
+        }
+
+        private static void ReapplyAssignedCustomRoles()
+        {
+            if (_assignedCustomRoles.Count == 0) return;
+            if (!RoleManager.InstanceExists) return;
+
+            foreach (var entry in _assignedCustomRoles)
+            {
+                var descriptor = FindDescriptor(entry.Value);
+                var player = FindPlayer(entry.Key);
+                if (descriptor == null || player == null || player.Data == null) continue;
+                if (player.Data.myRole != null && descriptor.Matches(player.Data.myRole)) continue;
+
+                AssignCustomRole(player, descriptor, false, false);
+            }
+        }
+
         internal static void ApplyOnAssign(RoleBehaviour role, PlayerControl player)
         {
             for (int i = 0; i < _handles.Count; i++)
@@ -176,7 +223,17 @@ namespace ClassicUs.ManuAPI
             {
                 var h = _handles[i];
                 if (h.Descriptor.TeamType != type) continue;
-                if (!h.Descriptor.IsRegisteredInRoleManager) continue;
+
+                EnsureAllTypesRegistered();
+                if (!h.Descriptor.IsRegisteredInRoleManager || FindRegisteredRole(h.Descriptor.RoleTypeName) == null)
+                {
+                    TryAddRole(rm, h);
+                    if (!h.Descriptor.IsRegisteredInRoleManager || FindRegisteredRole(h.Descriptor.RoleTypeName) == null)
+                    {
+                        ManuAPIPlugin.Log.LogWarning("RoleRegistry: skipping " + h.Descriptor.RoleTypeName + " assignment; role is not registered in current RoleManager.");
+                        continue;
+                    }
+                }
 
                 AssignOne(rm, h.Descriptor, rng);
             }
@@ -189,9 +246,19 @@ namespace ClassicUs.ManuAPI
             {
                 if (p == null || p.Data == null || p.Data.Disconnected || p.Data.IsDead) continue;
                 var role = p.Data.myRole;
-                if (role == null || role.RoleTeamType != descriptor.TeamType) continue;
+                if (role == null)
+                {
+                    if (descriptor.TeamType != RoleTeamTypes.Crewmate) continue;
+                    candidates.Add(p);
+                    continue;
+                }
+
+                if (role.RoleTeamType != descriptor.TeamType) continue;
                 candidates.Add(p);
             }
+
+            ManuAPIPlugin.Log.LogInfo("RoleRegistry: " + descriptor.RoleTypeName + " candidates=" + candidates.Count +
+                                      " count=" + descriptor.Count + " chance=" + descriptor.RoleChancePercent + ".");
 
             for (int i = candidates.Count - 1; i > 0; i--)
             {
@@ -203,8 +270,112 @@ namespace ClassicUs.ManuAPI
             for (int i = 0; i < toAssign; i++)
             {
                 if (rng.NextDouble() * 100.0 >= descriptor.RoleChancePercent) continue;
-                rm.AssignRole(candidates[i], descriptor.AssignedRoleName);
+                if (AssignCustomRole(candidates[i], descriptor, true))
+                    ManactorAPI.SendRpcMethod(RpcAssignCustomRoleKey, candidates[i].Data.PlayerId, descriptor.RoleTypeName);
             }
+        }
+
+        [ManactorRpc(RpcAssignCustomRoleKey)]
+        private static void OnAssignCustomRoleRpc(byte senderId, byte playerId, string roleTypeName)
+        {
+            var client = AmongUsClient.Instance;
+            if (client != null && client.AmHost) return;
+
+            var descriptor = FindDescriptor(roleTypeName);
+            if (descriptor == null)
+            {
+                ManuAPIPlugin.Log.LogError("RoleRegistry: received assignment for unknown custom role " + roleTypeName + ".");
+                return;
+            }
+
+            var player = FindPlayer(playerId);
+            if (player == null)
+            {
+                QueuePendingAssignment(playerId, roleTypeName);
+                return;
+            }
+
+            if (!AssignCustomRole(player, descriptor, false, false))
+                QueuePendingAssignment(playerId, roleTypeName);
+        }
+
+        private static void QueuePendingAssignment(byte playerId, string roleTypeName)
+        {
+            for (int i = 0; i < _pendingAssignments.Count; i++)
+            {
+                var pending = _pendingAssignments[i];
+                if (pending.playerId == playerId && pending.roleTypeName == roleTypeName)
+                    return;
+            }
+
+            _pendingAssignments.Add((playerId, roleTypeName));
+            ManuAPIPlugin.Log.LogInfo("RoleRegistry: queued custom role sync " + roleTypeName + " for player " + playerId + ".");
+        }
+
+        private static bool AssignCustomRole(PlayerControl player, CustomRole descriptor, bool isHostAssignment, bool logFailures = true)
+        {
+            if (player == null || player.Data == null || descriptor == null) return false;
+
+            var role = FindRegisteredRole(descriptor.RoleTypeName);
+            if (role == null)
+            {
+                EnsureAllTypesRegistered();
+                role = FindRegisteredRole(descriptor.RoleTypeName);
+                if (role == null)
+                {
+                    if (logFailures)
+                        ManuAPIPlugin.Log.LogError("RoleRegistry: registered role instance not found for " + descriptor.RoleTypeName + ".");
+                    return false;
+                }
+            }
+
+            player.Data.myRole = role;
+            player.Data.roleWhenAliveName = role.roleCodeName;
+            role.Player = player;
+            role.OnAssign(player);
+            _assignedCustomRoles[player.Data.PlayerId] = descriptor.RoleTypeName;
+
+            ManuAPIPlugin.Log.LogInfo((isHostAssignment ? "Assigned" : "Synced") + " custom role " +
+                                      descriptor.RoleTypeName + " to " + player.Data.PlayerName + ".");
+            return true;
+        }
+
+        private static CustomRole FindDescriptor(string roleTypeName)
+        {
+            for (int i = 0; i < _handles.Count; i++)
+            {
+                var descriptor = _handles[i].Descriptor;
+                if (descriptor != null && descriptor.RoleTypeName == roleTypeName)
+                    return descriptor;
+            }
+
+            return null;
+        }
+
+        private static PlayerControl FindPlayer(byte playerId)
+        {
+            foreach (var p in PlayerControl.AllPlayerControls)
+            {
+                if (p != null && p.Data != null && p.Data.PlayerId == playerId)
+                    return p;
+            }
+
+            return null;
+        }
+
+        private static RoleBehaviour FindRegisteredRole(string roleTypeName)
+        {
+            if (!RoleManager.InstanceExists) return null;
+            var roles = RoleManager.Instance.allRoles;
+            if (roles == null) return null;
+
+            foreach (var role in roles)
+            {
+                if (role != null && role.GetIl2CppType().Name == roleTypeName)
+                    return role;
+            }
+
+            return null;
         }
     }
 }

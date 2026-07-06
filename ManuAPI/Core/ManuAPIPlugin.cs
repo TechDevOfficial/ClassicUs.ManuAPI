@@ -21,6 +21,7 @@ namespace ClassicUs.ManuAPI
             var harmony = new Harmony(Guid);
             harmony.PatchAll();
             Il2CppInteropCompat.Apply(harmony);
+            RoleRegistry.RegisterNetworkHandlers();
             Log.LogInfo("ClassicUs.ManuAPI loaded.");
         }
     }

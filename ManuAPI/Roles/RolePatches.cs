@@ -159,7 +159,7 @@ namespace ClassicUs.ManuAPI
     [HarmonyPatch(typeof(RoleManager), nameof(RoleManager.Start))]
     internal static class RoleManager_Start_Patch
     {
-        private static void Postfix() => RoleRegistry.EnsureAllTypesRegistered();
+        private static void Postfix() { }
     }
 
     [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.FixedUpdate))]
@@ -168,7 +168,7 @@ namespace ClassicUs.ManuAPI
         private static void Prefix(PlayerControl __instance)
         {
             if (__instance != PlayerControl.LocalPlayer) return;
-            RoleRegistry.EnsureAllTypesRegistered();
+            RoleRegistry.ProcessPendingAssignments();
         }
     }
 
@@ -177,7 +177,7 @@ namespace ClassicUs.ManuAPI
     {
         private static void Prefix(HudManager __instance)
         {
-            RoleRegistry.EnsureAllTypesRegistered();
+            RoleRegistry.ProcessPendingAssignments();
             RoleRegistry.UpdateKillButtonVisibility(__instance);
         }
     }
@@ -336,10 +336,6 @@ namespace ClassicUs.ManuAPI
     {
         private static void Prefix()
         {
-            var client = AmongUsClient.Instance;
-            if (client == null || !client.AmHost) return;
-
-            RoleRegistrationForcer.Force();
         }
 
         private static void Postfix(RoleManager __instance, RoleTeamTypes type, int max)

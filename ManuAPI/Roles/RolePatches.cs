@@ -165,10 +165,20 @@ namespace ClassicUs.ManuAPI
     [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.FixedUpdate))]
     internal static class PlayerControl_FixedUpdate_RoleRegistry_Patch
     {
+        private static string _lastLocalRoleTypeName;
+
         private static void Prefix(PlayerControl __instance)
         {
             if (__instance != PlayerControl.LocalPlayer) return;
             RoleRegistry.ProcessPendingAssignments();
+
+            var role = __instance.Data != null ? __instance.Data.myRole : null;
+            string current = role != null ? role.GetIl2CppType().Name : "<null>";
+            if (current != _lastLocalRoleTypeName)
+            {
+                ManuAPIPlugin.Log.LogWarning("Local player myRole changed: " + (_lastLocalRoleTypeName ?? "<none>") + " -> " + current);
+                _lastLocalRoleTypeName = current;
+            }
         }
     }
 

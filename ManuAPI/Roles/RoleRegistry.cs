@@ -327,6 +327,22 @@ namespace ClassicUs.ManuAPI
                 QueuePendingAssignment(playerId, roleTypeName);
         }
 
+        internal static void ReapplyIfCustomRole(PlayerControl player)
+        {
+            if (player == null || player.Data == null) return;
+            if (!_assignedCustomRoles.TryGetValue(player.Data.PlayerId, out var roleTypeName)) return;
+
+            var role = player.Data.myRole;
+            if (role != null && role.GetIl2CppType().Name == roleTypeName) return;
+
+            var descriptor = FindDescriptor(roleTypeName);
+            if (descriptor == null) return;
+
+            ManuAPIPlugin.Log.LogWarning("RoleRegistry: native SetRole reverted " + player.Data.PlayerName +
+                                          " away from " + roleTypeName + "; reapplying.");
+            AssignCustomRole(player, descriptor, false, false);
+        }
+
         private static void QueuePendingAssignment(byte playerId, string roleTypeName)
         {
             for (int i = 0; i < _pendingAssignments.Count; i++)

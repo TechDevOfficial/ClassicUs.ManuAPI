@@ -171,6 +171,7 @@ namespace ClassicUs.ManuAPI
         {
             if (__instance != PlayerControl.LocalPlayer) return;
             RoleRegistry.ProcessPendingAssignments();
+            RoleRegistry.ReapplyIfCustomRole(__instance);
 
             var role = __instance.Data != null ? __instance.Data.myRole : null;
             string current = role != null ? role.GetIl2CppType().Name : "<null>";
@@ -196,6 +197,16 @@ namespace ClassicUs.ManuAPI
     internal static class RoleBehaviour_OnAssign_Patch
     {
         private static void Postfix(RoleBehaviour __instance, PlayerControl player) => RoleRegistry.ApplyOnAssign(__instance, player);
+    }
+
+    [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.SetRole))]
+    internal static class PlayerControl_SetRole_Patch
+    {
+        private static void Postfix(PlayerControl __instance)
+        {
+            try { RoleRegistry.ReapplyIfCustomRole(__instance); }
+            catch (Exception e) { ManuAPIPlugin.Log.LogError("PlayerControl.SetRole reapply: " + e); }
+        }
     }
 
     internal static class RoleRegistrationForcer

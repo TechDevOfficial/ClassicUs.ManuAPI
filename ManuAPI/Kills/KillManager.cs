@@ -5,6 +5,8 @@ namespace ClassicUs.ManuAPI
     public sealed class KillRequest
     {
         public bool TeleportKiller = true;
+        public bool CreateDeadBody = true;
+        public bool PlayKillSound = true;
         public MurderResultFlags ResultFlags = MurderResultFlags.Succeeded;
     }
 
@@ -14,9 +16,11 @@ namespace ClassicUs.ManuAPI
         {
             request ??= new KillRequest();
 
-            ManactorAPI.KillPlayer(killer, target, new KillOptions
+            ManactorAPI.KillPlayer(killer, target, new CustomKillOptions
             {
-                WillTeleportMurder = request.TeleportKiller,
+                TeleportKiller = request.TeleportKiller,
+                CreateDeadBody = request.CreateDeadBody,
+                PlayKillSound = request.PlayKillSound,
                 ResultFlags = request.ResultFlags,
             });
         }

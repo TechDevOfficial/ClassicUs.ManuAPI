@@ -7,6 +7,7 @@ namespace ClassicUs.ManuAPI
         public bool TeleportKiller = true;
         public bool CreateDeadBody = true;
         public bool PlayKillSound = true;
+        public bool ShowKillAnimation = true;
         public MurderResultFlags ResultFlags = MurderResultFlags.Succeeded;
     }
 
@@ -21,6 +22,7 @@ namespace ClassicUs.ManuAPI
                 TeleportKiller = request.TeleportKiller,
                 CreateDeadBody = request.CreateDeadBody,
                 PlayKillSound = request.PlayKillSound,
+                ShowKillAnimation = request.ShowKillAnimation,
                 ResultFlags = request.ResultFlags,
             });
         }

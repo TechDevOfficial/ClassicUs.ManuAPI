@@ -9,10 +9,12 @@ namespace ClassicUs.ManuAPI
         private static readonly List<CustomAbility> _allAbilities = new();
 
         private AbilityButton _button;
+        private readonly Vector3 _gridSlot;
 
         protected CustomAbility()
         {
             _allAbilities.Add(this);
+            _gridSlot = AbilityButtonGrid.ReserveNextSlot();
         }
 
         internal static void ResetAll()
@@ -27,7 +29,7 @@ namespace ClassicUs.ManuAPI
         protected abstract string Name { get; }
         protected virtual float Cooldown => 0f;
         protected virtual AspectPosition.EdgeAlignments Alignment => AspectPosition.EdgeAlignments.LeftBottom;
-        protected virtual Vector3 DistanceFromEdge => new Vector3(1.4f, 1f, 0f);
+        protected virtual Vector3 DistanceFromEdge => _gridSlot;
 
         protected abstract Sprite CreateIcon(Sprite original);
         protected abstract bool IsVisible();

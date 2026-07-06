@@ -4,16 +4,8 @@ namespace ClassicUs.ManuAPI
 {
     public static class AbilityButtonGrid
     {
-        private const float BaseDistanceFromEdge = 1.4f;
-        private const float Spacing = 0.9f;
-        private const float DefaultY = 1f;
-
-        private static int _nextSlot = 1;
-
-        public static Vector3 ReserveNextSlot(float y = DefaultY)
-        {
-            int slot = _nextSlot++;
-            return new Vector3(BaseDistanceFromEdge + slot * Spacing, y, 0f);
-        }
+        public static readonly Vector3 DefaultSlot = new(1.4f, 1f, 0f);
+        public static readonly Vector3 SlotA = new(1.25f, 1f, 0f);
+        public static readonly Vector3 SlotB = new(2.55f, 1f, 0f);
     }
 }

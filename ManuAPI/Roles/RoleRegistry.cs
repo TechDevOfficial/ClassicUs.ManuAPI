@@ -187,6 +187,21 @@ namespace ClassicUs.ManuAPI
             _assignedCustomRoles.Clear();
         }
 
+        internal static void InvalidateForNewMatch()
+        {
+            _pendingAssignments.Clear();
+            _assignedCustomRoles.Clear();
+            _nativeTypesWarmedUp = false;
+
+            for (int i = 0; i < _handles.Count; i++)
+            {
+                var h = _handles[i];
+                h.RegisteredRole = null;
+                h.AddAttempted = false;
+                h.Descriptor.AssignedRoleName = null;
+            }
+        }
+
         internal static void ProcessPendingAssignments()
         {
             ReapplyAssignedCustomRoles();

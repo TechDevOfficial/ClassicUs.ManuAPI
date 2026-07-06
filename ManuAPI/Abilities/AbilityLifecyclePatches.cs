@@ -39,6 +39,9 @@ namespace ClassicUs.ManuAPI
         {
             try { CustomAbility.ResetAll(); }
             catch (Exception e) { ManuAPIPlugin.Log.LogError("CustomAbility.ResetAll (" + reason + "): " + e); }
+
+            try { RoleRegistry.InvalidateForNewMatch(); }
+            catch (Exception e) { ManuAPIPlugin.Log.LogError("RoleRegistry.InvalidateForNewMatch (" + reason + "): " + e); }
         }
     }
 }

@@ -53,6 +53,21 @@ namespace ClassicUs.ManuAPI
                 _resizeToStandardIconSize ? AssetUtils.StandardIconSize : null);
     }
 
+    public class LoadableSound : LoadableAsset<AudioClip>
+    {
+        private readonly System.Reflection.Assembly _assembly;
+        private readonly string _resourceName;
+
+        public LoadableSound(System.Reflection.Assembly assembly, string resourceName)
+        {
+            _assembly = assembly;
+            _resourceName = resourceName;
+        }
+
+        protected override AudioClip Load() =>
+            AssetUtils.LoadAudioClipFromEmbeddedResource(_assembly, _resourceName);
+    }
+
     public class LoadableBundleAsset<T> : LoadableAsset<T> where T : UnityEngine.Object
     {
         private readonly string _bundleKey;

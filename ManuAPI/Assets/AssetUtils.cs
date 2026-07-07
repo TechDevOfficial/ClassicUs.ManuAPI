@@ -82,5 +82,57 @@ namespace ClassicUs.ManuAPI
                 return null;
             }
         }
+
+        public static AudioClip LoadAudioClipFromWavBytes(byte[] wavBytes, string name = "EmbeddedClip")
+        {
+            if (wavBytes == null || wavBytes.Length < 44) return null;
+
+            int channels = BitConverter.ToInt16(wavBytes, 22);
+            int sampleRate = BitConverter.ToInt32(wavBytes, 24);
+            int bitsPerSample = BitConverter.ToInt16(wavBytes, 34);
+
+            int dataOffset = 12;
+            int dataSize = 0;
+            while (dataOffset + 8 <= wavBytes.Length)
+            {
+                string chunkId = System.Text.Encoding.ASCII.GetString(wavBytes, dataOffset, 4);
+                int chunkSize = BitConverter.ToInt32(wavBytes, dataOffset + 4);
+                if (chunkId == "data")
+                {
+                    dataOffset += 8;
+                    dataSize = chunkSize;
+                    break;
+                }
+                dataOffset += 8 + chunkSize;
+            }
+
+            if (dataSize <= 0 || channels <= 0 || bitsPerSample != 16) return null;
+
+            int sampleCount = dataSize / 2;
+            var samples = new float[sampleCount];
+            for (int i = 0; i < sampleCount; i++)
+            {
+                short raw = BitConverter.ToInt16(wavBytes, dataOffset + i * 2);
+                samples[i] = raw / 32768f;
+            }
+
+            var clip = AudioClip.Create(name, sampleCount / channels, channels, sampleRate, false);
+            clip.SetData(samples, 0);
+            return clip;
+        }
+
+        public static AudioClip LoadAudioClipFromEmbeddedResource(Assembly assembly, string resourceName)
+        {
+            try
+            {
+                var bytes = ReadEmbeddedResource(assembly, resourceName);
+                return bytes == null ? null : LoadAudioClipFromWavBytes(bytes, resourceName);
+            }
+            catch (Exception e)
+            {
+                ManuAPIPlugin.Log.LogError("LoadAudioClipFromEmbeddedResource (" + resourceName + "): " + e);
+                return null;
+            }
+        }
     }
 }

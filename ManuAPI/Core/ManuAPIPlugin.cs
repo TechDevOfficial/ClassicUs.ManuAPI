@@ -11,7 +11,7 @@ namespace ClassicUs.ManuAPI
     public class ManuAPIPlugin : BasePlugin
     {
         public const string Guid = "classicus.manuapi";
-        public const string Version = "1.3.24";
+        public const string Version = "1.3.25";
 
         public static ManualLogSource Log;
 

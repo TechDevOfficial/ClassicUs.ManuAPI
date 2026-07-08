@@ -1,12 +1,15 @@
-# ManuAPI Docs — built site
+# ManuAPI Docs
 
-This branch contains the compiled static output of the ManuAPI documentation site, served via GitHub Pages.
+This branch is served via GitHub Pages. The compiled static site lives at the
+root of this branch; the Docusaurus source lives in `source/`.
 
-Source lives in the `docs/` folder on the `main` branch (Docusaurus). To publish an update:
+To publish an update:
 
 ```
-cd docs
+cd source
+npm install
 npm run build
 ```
 
-then copy the contents of `docs/build/` to the root of this branch and push.
+then copy the contents of `source/build/` to the root of this branch
+(everything except `source/` itself) and push.

@@ -5,7 +5,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 const config = {
   title: 'ManuAPI',
   tagline: 'A modding framework for Classic Us',
-  favicon: 'img/favicon.svg',
+  favicon: 'img/logo.png',
 
   url: 'https://techdevofficial.github.io',
   baseUrl: '/ClassicUs.ManuAPI/',
@@ -49,7 +49,10 @@ const config = {
         title: 'ManuAPI',
         logo: {
           alt: 'ManuAPI',
-          src: 'img/logo.svg',
+          src: 'img/logo.png',
+          srcDark: 'img/logo.png',
+          width: 32,
+          height: 32,
         },
         items: [
           {

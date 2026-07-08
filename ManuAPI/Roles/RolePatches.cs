@@ -156,6 +156,26 @@ namespace ClassicUs.ManuAPI
         }
     }
 
+    [HarmonyPatch(typeof(IntroCutscene._RetryTaskTextWhenRoleArrives_d__33), nameof(IntroCutscene._RetryTaskTextWhenRoleArrives_d__33.MoveNext))]
+    internal static class IntroCutscene_RetryTaskTextWhenRoleArrives_MoveNext_Patch
+    {
+        private static void Postfix()
+        {
+            var intro = IntroCutscene.Instance;
+            if (intro == null || intro.Title == null || intro.DescriptionText == null) return;
+
+            var local = PlayerControl.LocalPlayer;
+            if (local == null || local.Data == null || local.Data.myRole == null) return;
+
+            var d = RoleRegistry.Find(local.Data.myRole);
+            if (d == null) return;
+
+            intro.Title.text = d.DisplayName;
+            intro.Title.color = d.TeamColor;
+            intro.DescriptionText.text = d.Description;
+        }
+    }
+
     [HarmonyPatch(typeof(RoleManager), nameof(RoleManager.Start))]
     internal static class RoleManager_Start_Patch
     {

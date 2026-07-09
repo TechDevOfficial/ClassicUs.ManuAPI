@@ -288,6 +288,7 @@ namespace ClassicUs.ManuAPI
             foreach (var p in PlayerControl.AllPlayerControls)
             {
                 if (p == null || p.Data == null || p.Data.Disconnected || p.Data.IsDead) continue;
+                if (_assignedCustomRoles.ContainsKey(p.Data.PlayerId)) continue;
                 var role = p.Data.myRole;
                 if (role == null)
                 {

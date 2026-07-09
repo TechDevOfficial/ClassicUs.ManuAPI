@@ -152,7 +152,7 @@ namespace ClassicUs.ManuAPI
 
             __instance.__4__this.Title.text = d.DisplayName;
             __instance.__4__this.Title.color = d.TeamColor;
-            __instance.__4__this.DescriptionText.text = d.Description;
+            __instance.__4__this.DescriptionText.text = d.DescriptionShort;
         }
     }
 
@@ -172,7 +172,7 @@ namespace ClassicUs.ManuAPI
 
             intro.Title.text = d.DisplayName;
             intro.Title.color = d.TeamColor;
-            intro.DescriptionText.text = d.Description;
+            intro.DescriptionText.text = d.DescriptionShort;
         }
     }
 

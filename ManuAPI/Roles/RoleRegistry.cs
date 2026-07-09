@@ -174,6 +174,14 @@ namespace ClassicUs.ManuAPI
             return null;
         }
 
+        internal static CustomRole FindAssigned(PlayerControl player)
+        {
+            if (player == null || player.Data == null) return null;
+            return _assignedCustomRoles.TryGetValue(player.Data.PlayerId, out var roleTypeName)
+                ? FindDescriptor(roleTypeName)
+                : null;
+        }
+
         internal static IEnumerable<CustomRole> RegisteredCustomRoles()
         {
             for (int i = 0; i < _handles.Count; i++)

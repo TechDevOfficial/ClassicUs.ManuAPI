@@ -147,7 +147,7 @@ namespace ClassicUs.ManuAPI
             var local = PlayerControl.LocalPlayer;
             if (local == null || local.Data == null || local.Data.myRole == null) return;
 
-            var d = RoleRegistry.Find(local.Data.myRole);
+            var d = RoleRegistry.Find(local.Data.myRole) ?? RoleRegistry.FindAssigned(local);
             if (d == null) return;
 
             __instance.__4__this.Title.text = d.DisplayName;
@@ -167,7 +167,7 @@ namespace ClassicUs.ManuAPI
             var local = PlayerControl.LocalPlayer;
             if (local == null || local.Data == null || local.Data.myRole == null) return;
 
-            var d = RoleRegistry.Find(local.Data.myRole);
+            var d = RoleRegistry.Find(local.Data.myRole) ?? RoleRegistry.FindAssigned(local);
             if (d == null) return;
 
             intro.Title.text = d.DisplayName;

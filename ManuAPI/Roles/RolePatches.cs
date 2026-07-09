@@ -24,6 +24,9 @@ namespace ClassicUs.ManuAPI
 
                 intro.Title.text = descriptor.DisplayName;
                 intro.Title.color = descriptor.TeamColor;
+                intro.DescriptionText.gameObject.SetActive(true);
+                intro.DescriptionText.enabled = true;
+                intro.DescriptionText.color = Color.white;
                 intro.DescriptionText.text = descriptor.DescriptionShort;
             }
             catch (Exception e)
@@ -234,6 +237,12 @@ namespace ClassicUs.ManuAPI
             if (__instance == PlayerControl.LocalPlayer)
                 IntroText.ApplyCurrent();
         }
+    }
+
+    [HarmonyPatch(typeof(IntroCutscene._CoBegin_d__29), nameof(IntroCutscene._CoBegin_d__29.MoveNext))]
+    internal static class IntroCutscene_CoBegin_MoveNext_Patch
+    {
+        private static void Postfix() => IntroText.ApplyCurrent();
     }
 
     [HarmonyPatch(typeof(HudManager), nameof(HudManager.FixedUpdate))]

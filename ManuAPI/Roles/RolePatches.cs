@@ -6,6 +6,33 @@ using UnityEngine;
 
 namespace ClassicUs.ManuAPI
 {
+    internal static class IntroText
+    {
+        internal static void ApplyCurrent()
+        {
+            try
+            {
+                var intro = IntroCutscene.Instance;
+                if (intro == null || !intro.gameObject.activeInHierarchy || intro.Title == null || intro.DescriptionText == null)
+                    return;
+
+                var local = PlayerControl.LocalPlayer;
+                if (local == null || local.Data == null) return;
+
+                var descriptor = RoleRegistry.Find(local.Data.myRole) ?? RoleRegistry.FindAssigned(local);
+                if (descriptor == null) return;
+
+                intro.Title.text = descriptor.DisplayName;
+                intro.Title.color = descriptor.TeamColor;
+                intro.DescriptionText.text = descriptor.DescriptionShort;
+            }
+            catch (Exception e)
+            {
+                ManuAPIPlugin.Log.LogError("Apply custom intro text: " + e);
+            }
+        }
+    }
+
     internal static class RolePatchHelper
     {
         internal static bool TryCustomString(RoleBehaviour role, Func<CustomRole, string> getValue, ref string result)
@@ -200,6 +227,12 @@ namespace ClassicUs.ManuAPI
                 ManuAPIPlugin.Log.LogWarning("Local player myRole changed: " + (_lastLocalRoleTypeName ?? "<none>") + " -> " + current);
                 _lastLocalRoleTypeName = current;
             }
+        }
+
+        private static void Postfix(PlayerControl __instance)
+        {
+            if (__instance == PlayerControl.LocalPlayer)
+                IntroText.ApplyCurrent();
         }
     }
 

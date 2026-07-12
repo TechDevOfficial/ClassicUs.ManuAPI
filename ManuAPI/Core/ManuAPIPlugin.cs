@@ -11,7 +11,7 @@ namespace ClassicUs.ManuAPI
     public class ManuAPIPlugin : BasePlugin
     {
         public const string Guid = "classicus.manuapi";
-        public const string Version = "1.3.30";
+        public const string Version = "1.4.0";
 
         public static ManualLogSource Log;
 
@@ -22,6 +22,7 @@ namespace ClassicUs.ManuAPI
             harmony.PatchAll();
             Il2CppInteropCompat.Apply(harmony);
             RoleRegistry.RegisterNetworkHandlers();
+            GameModeRegistry.RegisterNetworkHandlers();
             Log.LogInfo("ClassicUs.ManuAPI loaded.");
         }
     }

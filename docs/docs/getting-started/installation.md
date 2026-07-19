@@ -9,9 +9,9 @@ pin both explicitly so builds stay reproducible.
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="ClassicUs.GameLibs" Version="2026.7.4.1" PrivateAssets="all" />
+  <PackageReference Include="ClassicUs.GameLibs" Version="2026.7.11.1" PrivateAssets="all" />
   <PackageReference Include="ClassicUs.Manactor" Version="1.0.26" PrivateAssets="all" ExcludeAssets="runtime" />
-  <PackageReference Include="ClassicUs.ManuAPI" Version="1.3.21" PrivateAssets="all" ExcludeAssets="runtime" />
+  <PackageReference Include="ClassicUs.ManuAPI" Version="1.5.1" PrivateAssets="all" ExcludeAssets="runtime" />
 </ItemGroup>
 ```
 

@@ -10,6 +10,8 @@ Everything in these docs, in one table.
 |---|---|---|
 | Roles | `CustomRole` / `CustomImpostorRole` / `CustomCrewmateRole` | Describe a role's identity and team behaviour. |
 | Roles | `RoleRegistry` | Register and sync a role across the lobby. |
+| Events | `GameEvents` | Subscribe to murder, report, meeting, vent, task and connection events. |
+| Game Modes | `CustomGameMode` / `GameModeRegistry` | Register and synchronise host-selected custom modes. |
 | Abilities | `CustomAbility` | A ticking, self-resetting ability button. |
 | Abilities | `AbilityButtonGrid` | Known-good bottom-left button slots. |
 | Kills | `KillManager` / `KillRequest` | Host-authoritative kills with independently toggleable side effects. |

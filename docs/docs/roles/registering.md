@@ -4,43 +4,37 @@ sidebar_position: 2
 
 # Registering a Role
 
-`RoleRegistry.Register` needs four things: your descriptor, a way to check whether the
-IL2CPP type is ready yet, a way to trigger that registration, and the type itself once it
-exists.
-
-This looks fiddly because IL2CPP class injection is asynchronous — ManuAPI retries
-automatically so you never have to poll for it yourself.
+For Classic Us 7.11+, use `RegisterVirtual` for ordinary custom roles. A virtual role
+keeps a real vanilla role underneath it and overlays your name, intro text, colour and
+ability behaviour. This is the safe default: it preserves native Impostor features such
+as the kill button, vents and sabotage instead of replacing the entire `RoleBehaviour`.
 
 ```csharp
-public static bool IsTypeReady;
-private static bool _classInjectorAttempted;
+using ClassicUs.ManuAPI;
 
-RoleRegistry.Register(new VaderRoleDescriptor(), () => IsTypeReady,
-    EnsureIl2CppTypeRegistered, () => Il2CppType.Of<DarthVaderRole>());
-
-public static void EnsureIl2CppTypeRegistered()
+public override void Load()
 {
-    if (_classInjectorAttempted) return;
-    _classInjectorAttempted = true;
-
-    ManactorAPI.RegisterIl2CppType(() =>
-    {
-        ClassInjector.RegisterTypeInIl2Cpp<DarthVaderRole>();
-        IsTypeReady = true;
-    });
+    RoleRegistry.RegisterVirtual(new MyRoleDescriptor());
 }
+
+public static bool IsMyRole(PlayerControl player) =>
+    RoleRegistry.IsAssigned(player, "my.mod.MyRole");
 ```
 
-:::info Your RoleBehaviour subclass stays thin
-`DarthVaderRole` itself is a thin subclass of the native `RoleBehaviour` — it doesn't need
-any ManuAPI-specific code. ManuAPI reads your `CustomRole` descriptor to fill in names,
-colors, descriptions and team behaviour at runtime.
-:::
+Use `CustomImpostorRole` when the role should keep Impostor abilities, and
+`CustomCrewmateRole` when it should keep Crewmate behaviour. ManuAPI assigns the
+appropriate native role before applying your descriptor, then synchronises the custom
+identity to every modded client through Manactor.
 
-## Assignment stays put
+## Native IL2CPP roles
 
-`RoleRegistry` also defends your assignment against the game's own role-sync flow: the
-native `RoleManager.AssignRolesForTeam` call ends up sending a `PlayerControl.SetRole`
-RPC that can arrive *after* your custom assignment and silently overwrite it. ManuAPI
-detects that and reapplies your role immediately — you don't need to guard against it
-yourself.
+`RoleRegistry.Register(...)` is still available for the rare case where you genuinely
+need a custom IL2CPP `RoleBehaviour` subclass. It requires type injection and should only
+be used when a virtual role cannot express the mechanic. Do not use it just to change
+the role name, skin, intro, buttons or abilities.
+
+## Assignment lifecycle
+
+Custom assignments are cleared between matches. Meeting and match transitions keep the
+underlying native role valid; do not repeatedly call `AssignCustomRole` every frame.
+Listen to [Game Events](/events/game-events) for lifecycle changes instead.

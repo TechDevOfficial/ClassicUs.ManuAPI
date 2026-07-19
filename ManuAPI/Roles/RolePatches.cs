@@ -6,6 +6,14 @@ using UnityEngine;
 
 namespace ClassicUs.ManuAPI
 {
+    [HarmonyPatch(typeof(RoleManager), nameof(RoleManager.AssignRole))]
+    internal static class RoleManager_AssignRole_VirtualPatch
+    {
+        private static bool Prefix(PlayerControl player, string roleName)
+        {
+            return !RoleRegistry.AssignVirtualByName(player, roleName);
+        }
+    }
     internal static class IntroText
     {
         internal static void ApplyCurrent()
@@ -221,7 +229,7 @@ namespace ClassicUs.ManuAPI
         {
             if (__instance != PlayerControl.LocalPlayer) return;
             RoleRegistry.ProcessPendingAssignments();
-            RoleRegistry.ReapplyIfCustomRole(__instance);
+            RoleRegistry.SyncAfterNativeSetRole(__instance);
 
             var role = __instance.Data != null ? __instance.Data.myRole : null;
             string current = role != null ? role.GetIl2CppType().Name : "<null>";
@@ -264,20 +272,10 @@ namespace ClassicUs.ManuAPI
     [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.SetRole))]
     internal static class PlayerControl_SetRole_Patch
     {
-        private static bool Prefix(PlayerControl __instance)
-        {
-            try { return !RoleRegistry.HasCustomRoleAssigned(__instance); }
-            catch (Exception e)
-            {
-                ManuAPIPlugin.Log.LogError("PlayerControl.SetRole guard: " + e);
-                return true;
-            }
-        }
-
         private static void Postfix(PlayerControl __instance)
         {
-            try { RoleRegistry.ReapplyIfCustomRole(__instance); }
-            catch (Exception e) { ManuAPIPlugin.Log.LogError("PlayerControl.SetRole reapply: " + e); }
+            try { RoleRegistry.SyncAfterNativeSetRole(__instance); }
+            catch (Exception e) { ManuAPIPlugin.Log.LogError("PlayerControl.SetRole sync: " + e); }
         }
     }
 

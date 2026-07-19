@@ -18,6 +18,7 @@ namespace ClassicUs.ManuAPI
             public Func<Il2CppSystem.Type> GetIl2CppType;
             public RoleBehaviour RegisteredRole;
             public bool AddAttempted;
+            public bool Virtual;
         }
 
         private static readonly List<Handle> _handles = new();
@@ -36,6 +37,24 @@ namespace ClassicUs.ManuAPI
                 EnsureClassRegistered = ensureClassRegistered,
                 GetIl2CppType = getIl2CppType,
             });
+        }
+
+        public static void RegisterVirtual(CustomRole descriptor)
+        {
+            descriptor.AssignedRoleName = descriptor.RoleTypeName;
+            _handles.Add(new Handle { Descriptor = descriptor, Virtual = true });
+        }
+
+        public static bool IsAssigned(PlayerControl player, string roleTypeName)
+        {
+            return player != null && player.Data != null &&
+                   _assignedCustomRoles.TryGetValue(player.Data.PlayerId, out var assigned) && assigned == roleTypeName;
+        }
+
+        internal static bool AssignVirtualByName(PlayerControl player, string roleName)
+        {
+            var descriptor = FindDescriptor(roleName);
+            return descriptor != null && FindHandle(descriptor)?.Virtual == true && AssignCustomRole(player, descriptor, false);
         }
 
         private static bool _nativeTypesWarmedUp;
@@ -64,6 +83,8 @@ namespace ClassicUs.ManuAPI
             for (int i = 0; i < _handles.Count; i++)
             {
                 var h = _handles[i];
+
+                if (h.Virtual) continue;
 
                 if (!h.IsClassReady())
                 {
@@ -149,16 +170,15 @@ namespace ClassicUs.ManuAPI
                     ManuAPIPlugin.Log.LogInfo("UpdateKillButtonVisibility: first call with role=" + role.GetIl2CppType().Name);
                 }
 
-                for (int i = 0; i < _handles.Count; i++)
-                {
-                    var descriptor = _handles[i].Descriptor;
-                    if (!descriptor.Matches(role) || !descriptor.CanUseKillButton) continue;
+                // Virtual roles deliberately retain ImpostorRole/CrewmateRole as
+                // their native backing role, so matching by IL2CPP type alone is
+                // not sufficient here.
+                var descriptor = FindAssigned(local) ?? Find(role);
+                if (descriptor == null) return;
 
-                    bool shouldShow = !local.Data.IsDead;
-                    if (hud.KillButton.gameObject.activeSelf != shouldShow)
-                        hud.KillButton.gameObject.SetActive(shouldShow);
-                    return;
-                }
+                bool shouldShow = descriptor.CanUseKillButton && !local.Data.IsDead;
+                if (hud.KillButton.gameObject.activeSelf != shouldShow)
+                    hud.KillButton.gameObject.SetActive(shouldShow);
             }
             catch (Exception e)
             {
@@ -206,7 +226,7 @@ namespace ClassicUs.ManuAPI
                 var h = _handles[i];
                 h.RegisteredRole = null;
                 h.AddAttempted = false;
-                h.Descriptor.AssignedRoleName = null;
+                h.Descriptor.AssignedRoleName = h.Virtual ? h.Descriptor.RoleTypeName : null;
             }
         }
 
@@ -241,6 +261,12 @@ namespace ClassicUs.ManuAPI
                 var descriptor = FindDescriptor(entry.Value);
                 var player = FindPlayer(entry.Key);
                 if (descriptor == null || player == null || player.Data == null) continue;
+                // Virtual roles intentionally keep the game's vanilla role as their
+                // backing RoleBehaviour.  It can never match a virtual type name,
+                // so trying to match it here used to call OnAssign every frame.
+                // That continuously reset the native impostor state (kill, vent
+                // and sabotage) in Freeplay and normal games alike.
+                if (FindHandle(descriptor)?.Virtual == true) continue;
                 if (player.Data.myRole != null && descriptor.Matches(player.Data.myRole)) continue;
 
                 AssignCustomRole(player, descriptor, false, false);
@@ -276,6 +302,11 @@ namespace ClassicUs.ManuAPI
                 if (h.Descriptor.TeamType != type) continue;
 
                 EnsureAllTypesRegistered();
+                if (h.Virtual)
+                {
+                    AssignOne(rm, h.Descriptor, rng);
+                    continue;
+                }
                 if (FindRegisteredRole(h.Descriptor) == null && !h.Descriptor.IsRegisteredInRoleManager)
                 {
                     TryAddRole(rm, h);
@@ -351,26 +382,40 @@ namespace ClassicUs.ManuAPI
                 QueuePendingAssignment(playerId, roleTypeName);
         }
 
-        internal static bool HasCustomRoleAssigned(PlayerControl player)
-        {
-            if (player == null || player.Data == null) return false;
-            return _assignedCustomRoles.ContainsKey(player.Data.PlayerId);
-        }
-
-        internal static void ReapplyIfCustomRole(PlayerControl player)
+        /// <summary>
+        /// Updates the runtime assignment cache after the game's native SetRole call.
+        /// This is especially important in Freeplay, where switching from one custom role
+        /// to another (or back to a vanilla role) must never be blocked by a stale cache entry.
+        /// </summary>
+        internal static void SyncAfterNativeSetRole(PlayerControl player)
         {
             if (player == null || player.Data == null) return;
-            if (!_assignedCustomRoles.TryGetValue(player.Data.PlayerId, out var roleTypeName)) return;
 
             var role = player.Data.myRole;
-            if (role != null && role.GetIl2CppType().Name == roleTypeName) return;
+            for (int i = 0; i < _handles.Count; i++)
+            {
+                var descriptor = _handles[i].Descriptor;
+                if (descriptor != null && descriptor.Matches(role))
+                {
+                    _assignedCustomRoles[player.Data.PlayerId] = descriptor.RoleTypeName;
+                    return;
+                }
+            }
 
-            var descriptor = FindDescriptor(roleTypeName);
-            if (descriptor == null) return;
+            // Virtual roles deliberately reuse a vanilla RoleBehaviour.  Do not erase the
+            // virtual assignment merely because the backing behaviour is ImpostorRole or
+            // CrewmateRole on the next FixedUpdate.
+            if (_assignedCustomRoles.TryGetValue(player.Data.PlayerId, out var existingRoleTypeName))
+            {
+                var existing = FindDescriptor(existingRoleTypeName);
+                if (existing != null && FindHandle(existing)?.Virtual == true)
+                    return;
+            }
 
-            ManuAPIPlugin.Log.LogWarning("RoleRegistry: native SetRole reverted " + player.Data.PlayerName +
-                                          " away from " + roleTypeName + "; reapplying.");
-            AssignCustomRole(player, descriptor, false, false);
+            _assignedCustomRoles.Remove(player.Data.PlayerId);
+            for (int i = _pendingAssignments.Count - 1; i >= 0; i--)
+                if (_pendingAssignments[i].playerId == player.Data.PlayerId)
+                    _pendingAssignments.RemoveAt(i);
         }
 
         private static void QueuePendingAssignment(byte playerId, string roleTypeName)
@@ -390,6 +435,24 @@ namespace ClassicUs.ManuAPI
         {
             if (player == null || player.Data == null || descriptor == null) return false;
 
+            var handle = FindHandle(descriptor);
+            if (handle?.Virtual == true)
+            {
+                // Do not point player data at the shared role template from
+                // RoleManager.allRoles. Let the game create/assign the native
+                // vanilla role, which also restores all HUD and ability state.
+                var vanillaName = descriptor.TeamType == RoleTeamTypes.Impostor ? "ImpostorRole" : "CrewmateRole";
+                player.SetRole(vanillaName);
+                var nativeRole = player.Data.myRole;
+                if (nativeRole == null) return false;
+
+                _assignedCustomRoles[player.Data.PlayerId] = descriptor.RoleTypeName;
+                descriptor.Apply(nativeRole, player);
+                ManuAPIPlugin.Log.LogInfo((isHostAssignment ? "Assigned" : "Synced") + " virtual custom role " +
+                                          descriptor.RoleTypeName + " to " + player.Data.PlayerName + ".");
+                return true;
+            }
+
             var role = FindRegisteredRole(descriptor);
             if (role == null)
             {
@@ -405,7 +468,8 @@ namespace ClassicUs.ManuAPI
             }
 
             player.Data.myRole = role;
-            player.Data.roleWhenAliveName = role.roleCodeName;
+            if (handle?.Virtual != true)
+                player.Data.roleWhenAliveName = role.roleCodeName;
             role.Player = player;
             role.OnAssign(player);
             _assignedCustomRoles[player.Data.PlayerId] = descriptor.RoleTypeName;
@@ -413,6 +477,27 @@ namespace ClassicUs.ManuAPI
             ManuAPIPlugin.Log.LogInfo((isHostAssignment ? "Assigned" : "Synced") + " custom role " +
                                       descriptor.RoleTypeName + " to " + player.Data.PlayerName + ".");
             return true;
+        }
+
+        private static Handle FindHandle(CustomRole descriptor)
+        {
+            for (int i = 0; i < _handles.Count; i++)
+                if (_handles[i].Descriptor == descriptor) return _handles[i];
+            return null;
+        }
+
+        private static RoleBehaviour FindVanillaRoleForTeam(RoleTeamTypes team)
+        {
+            if (!RoleManager.InstanceExists || RoleManager.Instance.allRoles == null) return null;
+            foreach (var role in RoleManager.Instance.allRoles)
+            {
+                if (role == null || role.RoleTeamType != team) continue;
+                var name = role.GetIl2CppType().Name;
+                if ((team == RoleTeamTypes.Impostor && name == "ImpostorRole") ||
+                    (team == RoleTeamTypes.Crewmate && name == "CrewmateRole"))
+                    return role;
+            }
+            return null;
         }
 
         private static CustomRole FindDescriptor(string roleTypeName)

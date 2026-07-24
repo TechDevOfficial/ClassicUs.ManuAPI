@@ -17,8 +17,8 @@ dotnet new classlib -n MyFirstClassicUsMod -f net6.0
 cd MyFirstClassicUsMod
 ```
 
-Replace the generated `.csproj` contents with this template. Change `GameDir` to your
-own Classic Us folder.
+Replace the generated `.csproj` contents with this template. It contains no personal
+machine path; you pass the game folder only when you want to copy a finished DLL.
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -29,8 +29,6 @@ own Classic Us folder.
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <GameDir>C:\Path\To\Classic Us 2026.7.11 Windows</GameDir>
-    <PluginsDir>$(GameDir)\BepInEx\plugins</PluginsDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,9 +37,9 @@ own Classic Us folder.
     <PackageReference Include="ClassicUs.ManuAPI" Version="1.5.1" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
 
-  <Target Name="CopyToPlugins" AfterTargets="Build">
-    <MakeDir Directories="$(PluginsDir)" />
-    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(PluginsDir)" />
+  <Target Name="CopyToPlugins" AfterTargets="Build" Condition="'$(ClassicUsGameDir)' != ''">
+    <MakeDir Directories="$(ClassicUsGameDir)\BepInEx\plugins" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(ClassicUsGameDir)\BepInEx\plugins" />
   </Target>
 </Project>
 ```
@@ -56,19 +54,25 @@ dotnet add package ClassicUs.Manactor --version 1.1.0
 dotnet add package ClassicUs.ManuAPI --version 1.5.1
 ```
 
-Then add the `GameDir`, `PluginsDir`, `AllowUnsafeBlocks` and `CopyToPlugins` parts from
-the template above. `ExcludeAssets="runtime"` is important: Manactor and ManuAPI are
+Then add `AllowUnsafeBlocks` and the optional `CopyToPlugins` target from the template
+above. `ExcludeAssets="runtime"` is important: Manactor and ManuAPI are
 separate BepInEx plugins, so your mod must reference them at compile time without bundling
 another copy into its output.
 
 ## 3. Build and install
 
 ```powershell
+# Build only
 dotnet build -c Release
+
+# Build and copy to the game on this computer
+dotnet build -c Release -p:ClassicUsGameDir="C:\Path\To\Classic Us 2026.7.11 Windows"
 ```
 
-If the `CopyToPlugins` target is present, the build automatically places your DLL in
-`BepInEx/plugins`. Start Classic Us and check `BepInEx/LogOutput.log` for your mod name.
+When `ClassicUsGameDir` is supplied and the `CopyToPlugins` target is present, the build
+automatically places your DLL in `BepInEx/plugins`. The path is a command-line setting,
+so it never needs to be committed to GitHub. Start Classic Us and check
+`BepInEx/LogOutput.log` for your mod name.
 
 :::tip Updating packages
 Use `dotnet list package --outdated` to see available updates. Keep GameLibs matched to

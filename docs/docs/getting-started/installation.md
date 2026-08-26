@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Installation
 
-This page starts from an empty folder. You need the **.NET 6 SDK**, a Classic Us 7.11
+This page starts from an empty folder. You need the **.NET 6 SDK**, a Classic Us 2026.8.17
 Windows installation with BepInEx, and the game opened at least once so BepInEx creates
 its `interop` folder.
 
@@ -32,9 +32,9 @@ machine path; you pass the game folder only when you want to copy a finished DLL
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ClassicUs.GameLibs" Version="2026.7.11.1" PrivateAssets="all" />
-    <PackageReference Include="ClassicUs.Manactor" Version="1.1.0" PrivateAssets="all" ExcludeAssets="runtime" />
-    <PackageReference Include="ClassicUs.ManuAPI" Version="1.5.1" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="ClassicUs.GameLibs" Version="2026.8.17.1" PrivateAssets="all" />
+    <PackageReference Include="ClassicUs.Manactor" Version="1.1.1" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="ClassicUs.ManuAPI" Version="1.5.2" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <Target Name="CopyToPlugins" AfterTargets="Build" Condition="'$(ClassicUsGameDir)' != ''">
@@ -49,9 +49,9 @@ machine path; you pass the game folder only when you want to copy a finished DLL
 Instead of editing XML yourself, you can add the packages with these commands:
 
 ```powershell
-dotnet add package ClassicUs.GameLibs --version 2026.7.11.1
-dotnet add package ClassicUs.Manactor --version 1.1.0
-dotnet add package ClassicUs.ManuAPI --version 1.5.1
+dotnet add package ClassicUs.GameLibs --version 2026.8.17.1
+dotnet add package ClassicUs.Manactor --version 1.1.1
+dotnet add package ClassicUs.ManuAPI --version 1.5.2
 ```
 
 Then add `AllowUnsafeBlocks` and the optional `CopyToPlugins` target from the template
@@ -66,7 +66,7 @@ another copy into its output.
 dotnet build -c Release
 
 # Build and copy to the game on this computer
-dotnet build -c Release -p:ClassicUsGameDir="C:\Path\To\Classic Us 2026.7.11 Windows"
+dotnet build -c Release -p:ClassicUsGameDir="C:\Path\To\Classic Us 2026.8.17 Windows"
 ```
 
 When `ClassicUsGameDir` is supplied and the `CopyToPlugins` target is present, the build

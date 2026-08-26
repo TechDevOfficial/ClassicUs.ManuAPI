@@ -33,7 +33,7 @@ machine path; you pass the game folder only when you want to copy a finished DLL
 
   <ItemGroup>
     <PackageReference Include="ClassicUs.GameLibs" Version="2026.8.17.1" PrivateAssets="all" />
-    <PackageReference Include="ClassicUs.Manactor" Version="1.1.1" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="ClassicUs.Manactor" Version="1.2.0" PrivateAssets="all" ExcludeAssets="runtime" />
     <PackageReference Include="ClassicUs.ManuAPI" Version="1.5.3" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
 
@@ -50,7 +50,7 @@ Instead of editing XML yourself, you can add the packages with these commands:
 
 ```powershell
 dotnet add package ClassicUs.GameLibs --version 2026.8.17.1
-dotnet add package ClassicUs.Manactor --version 1.1.1
+dotnet add package ClassicUs.Manactor --version 1.2.0
 dotnet add package ClassicUs.ManuAPI --version 1.5.3
 ```
 

@@ -24,7 +24,7 @@ jobs:
         run: dotnet restore ManuAPI/ManuAPI.csproj
 
       - name: Pack
-        run: dotnet pack ManuAPI/ManuAPI.csproj -c Release -o ${{ github.workspace }}/nupkg
+        run: dotnet pack ManuAPI/ManuAPI.csproj -c Release
 
       - name: NuGet login (Trusted Publishing)
         uses: NuGet/login@v1
@@ -32,4 +32,4 @@ jobs:
           user: manuu
 
       - name: Push to NuGet.org
-        run: dotnet nuget push "${{ github.workspace }}/nupkg/*.nupkg" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push "${{ github.workspace }}/ManuAPI/nupkg/*.nupkg" --source https://api.nuget.org/v3/index.json --skip-duplicate

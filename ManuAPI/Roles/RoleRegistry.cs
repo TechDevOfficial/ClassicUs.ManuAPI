@@ -363,6 +363,11 @@ namespace ClassicUs.ManuAPI
         {
             var client = AmongUsClient.Instance;
             if (client != null && client.AmHost) return;
+            if (!ManactorAPI.IsFromHost(senderId))
+            {
+                ManuAPIPlugin.Log.LogWarning("RoleRegistry: ignored non-host role assignment from sender " + senderId + ".");
+                return;
+            }
 
             var descriptor = FindDescriptor(roleTypeName);
             if (descriptor == null)

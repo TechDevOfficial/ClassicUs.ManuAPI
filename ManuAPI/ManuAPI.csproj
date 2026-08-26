@@ -10,7 +10,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <NoWarn>CS0626;CS0649;CS8632;CS0108</NoWarn>
 
-    <Version>1.5.2</Version>
+    <Version>1.5.3</Version>
     <PackageId>ClassicUs.ManuAPI</PackageId>
     <Authors>Manu</Authors>
     <Description>Modding framework/SDK for Classic Us (Among Us) BepInEx mods. Provides reusable helpers for ability buttons, custom roles and more, built on top of ClassicUs.Manactor.</Description>
@@ -22,7 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="ClassicUs.GameLibs" Version="2026.8.17.1" PrivateAssets="all" />
-    <PackageReference Include="ClassicUs.Manactor" Version="1.1.0" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="ClassicUs.Manactor" Version="1.2.0" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <Target Name="CopyToPlugins" AfterTargets="Build" Condition="'$(ClassicUsGameDir)' != ''">

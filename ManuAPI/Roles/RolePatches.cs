@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using ClassicUs.Manactor;
 using HarmonyLib;
 using UnityEngine;
@@ -175,30 +176,37 @@ namespace ClassicUs.ManuAPI
         }
     }
 
-    [HarmonyPatch(typeof(IntroCutscene._BeginTeam_d__35), nameof(IntroCutscene._BeginTeam_d__35.MoveNext))]
-    internal static class IntroCutscene_BeginTeam_MoveNext_Patch
+    internal static class NestedStateMachine
     {
-        private static void Postfix(IntroCutscene._BeginTeam_d__35 __instance, ref bool __result)
+        internal static MethodBase FindMoveNext(Type enclosingType, string namePrefix)
         {
-            if (!__result || __instance == null || __instance.__4__this == null) return;
+            foreach (var nested in enclosingType.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (nested.Name.StartsWith(namePrefix, StringComparison.Ordinal))
+                    return AccessTools.Method(nested, "MoveNext");
+            }
 
-            var local = PlayerControl.LocalPlayer;
-            if (local == null || local.Data == null || local.Data.myRole == null) return;
+            throw new MissingMethodException(enclosingType.FullName, namePrefix + "* state machine MoveNext");
+        }
 
-            var d = RoleRegistry.Find(local.Data.myRole) ?? RoleRegistry.FindAssigned(local);
-            if (d == null) return;
-
-            __instance.__4__this.Title.text = d.DisplayName;
-            __instance.__4__this.Title.color = d.TeamColor;
-            __instance.__4__this.DescriptionText.text = d.DescriptionShort;
+        internal static object GetCapturedThis(object stateMachineInstance)
+        {
+            if (stateMachineInstance == null) return null;
+            var field = AccessTools.Field(stateMachineInstance.GetType(), "<>4__this");
+            return field != null ? field.GetValue(stateMachineInstance) : null;
         }
     }
 
-    [HarmonyPatch(typeof(IntroCutscene._RetryTaskTextWhenRoleArrives_d__33), nameof(IntroCutscene._RetryTaskTextWhenRoleArrives_d__33.MoveNext))]
-    internal static class IntroCutscene_RetryTaskTextWhenRoleArrives_MoveNext_Patch
+    [HarmonyPatch]
+    internal static class IntroCutscene_BeginTeam_MoveNext_Patch
     {
-        private static void Postfix()
+        private static MethodBase TargetMethod() =>
+            NestedStateMachine.FindMoveNext(typeof(IntroCutscene), "_BeginTeam_d__");
+
+        private static void Postfix(ref bool __result)
         {
+            if (!__result) return;
+
             var intro = IntroCutscene.Instance;
             if (intro == null || intro.Title == null || intro.DescriptionText == null) return;
 
@@ -212,6 +220,15 @@ namespace ClassicUs.ManuAPI
             intro.Title.color = d.TeamColor;
             intro.DescriptionText.text = d.DescriptionShort;
         }
+    }
+
+    [HarmonyPatch]
+    internal static class IntroCutscene_RetryTaskTextWhenRoleArrives_MoveNext_Patch
+    {
+        private static MethodBase TargetMethod() =>
+            NestedStateMachine.FindMoveNext(typeof(IntroCutscene), "_RetryTaskTextWhenRoleArrives_d__");
+
+        private static void Postfix() => IntroText.ApplyCurrent();
     }
 
     [HarmonyPatch(typeof(RoleManager), nameof(RoleManager.Start))]
@@ -247,9 +264,12 @@ namespace ClassicUs.ManuAPI
         }
     }
 
-    [HarmonyPatch(typeof(IntroCutscene._CoBegin_d__29), nameof(IntroCutscene._CoBegin_d__29.MoveNext))]
+    [HarmonyPatch]
     internal static class IntroCutscene_CoBegin_MoveNext_Patch
     {
+        private static MethodBase TargetMethod() =>
+            NestedStateMachine.FindMoveNext(typeof(IntroCutscene), "_CoBegin_d__");
+
         private static void Postfix() => IntroText.ApplyCurrent();
     }
 
@@ -460,12 +480,15 @@ namespace ClassicUs.ManuAPI
         }
     }
 
-    [HarmonyPatch(typeof(ExileController._Animate_d__17), nameof(ExileController._Animate_d__17.MoveNext))]
+    [HarmonyPatch]
     internal static class ExileController_Animate_MoveNext_Patch
     {
-        private static void Postfix(ExileController._Animate_d__17 __instance)
+        private static MethodBase TargetMethod() =>
+            NestedStateMachine.FindMoveNext(typeof(ExileController), "_Animate_d__");
+
+        private static void Postfix(object __instance)
         {
-            var ctrl = __instance == null ? null : __instance.__4__this;
+            var ctrl = NestedStateMachine.GetCapturedThis(__instance) as ExileController;
             if (ctrl == null || ctrl.exiled == null) return;
             try
             {

@@ -21,6 +21,7 @@ namespace ClassicUs.ManuAPI
         private PassiveButton _passiveButton;
         private float _cooldownRemaining;
         private float _effectRemaining;
+        private int _lastActivationFrame = -1;
 
         public Action OnEffectExpired;
 
@@ -54,7 +55,7 @@ namespace ClassicUs.ManuAPI
 
             RefreshIcon();
 
-            bool canActivate = _canActivate == null || _canActivate();
+            bool canActivate = CanUseNow();
 
             if (_effectRemaining > 0f)
             {
@@ -150,10 +151,21 @@ namespace ClassicUs.ManuAPI
 
         private void HandleClick()
         {
-            if (IsOnCooldown) return;
-            if (_canActivate != null && !_canActivate()) return;
+            if (!CanUseNow()) return;
+            if (_lastActivationFrame == Time.frameCount) return;
 
+            _lastActivationFrame = Time.frameCount;
             _onClick?.Invoke();
+        }
+
+        private bool CanUseNow()
+        {
+            if (_buttonGo == null || !_buttonGo.activeInHierarchy || IsOnCooldown)
+                return false;
+            if (_isVisible != null && !_isVisible())
+                return false;
+
+            return _canActivate == null || _canActivate();
         }
 
         public void Reset()
@@ -169,6 +181,7 @@ namespace ClassicUs.ManuAPI
             _passiveButton = null;
             _cooldownRemaining = 0f;
             _effectRemaining = 0f;
+            _lastActivationFrame = -1;
         }
     }
 }
